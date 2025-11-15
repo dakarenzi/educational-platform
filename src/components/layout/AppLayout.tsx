@@ -1,28 +1,29 @@
-import React from "react";
-import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-
-type AppLayoutProps = {
-  children: React.ReactNode;
-  container?: boolean;
-  className?: string;
-  contentClassName?: string;
-};
-
-export function AppLayout({ children, container = false, className, contentClassName }: AppLayoutProps): JSX.Element {
+import React, { useEffect } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { AcademiCloudSidebar } from "@/components/AcademiCloudSidebar";
+import { useAuthStore } from "@/store/auth";
+import { Toaster } from "@/components/ui/sonner";
+export function AppLayout({ children }: { children?: React.ReactNode }): JSX.Element {
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+  if (!isAuthenticated) {
+    // Render nothing while redirecting
+    return <></>;
+  }
   return (
-    <SidebarProvider defaultOpen={false}>
-      <AppSidebar />
-      <SidebarInset className={className}>
-        <div className="absolute left-2 top-2 z-20">
-          <SidebarTrigger />
+    <div className="flex h-screen bg-muted/40">
+      <AcademiCloudSidebar />
+      <main className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 overflow-y-auto">
+          {children || <Outlet />}
         </div>
-        {container ? (
-          <div className={"max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10 lg:py-12" + (contentClassName ? ` ${contentClassName}` : "")}>{children}</div>
-        ) : (
-          children
-        )}
-      </SidebarInset>
-    </SidebarProvider>
+      </main>
+      <Toaster richColors />
+    </div>
   );
 }
