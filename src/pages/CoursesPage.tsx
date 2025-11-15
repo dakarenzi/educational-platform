@@ -1,28 +1,41 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
-import type { Course } from '@shared/types';
+import type { Course, Enrollment } from '@shared/types';
 import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { CourseForm } from '@/components/forms/CourseForm';
+import { Badge } from '@/components/ui/badge';
 const fetchCourses = async (): Promise<Course[]> => {
   return api<Course[]>('/api/courses');
+};
+const fetchEnrollments = async (studentId: string): Promise<Enrollment[]> => {
+  return api<Enrollment[]>(`/api/student/enrollments?studentId=${studentId}`);
 };
 export default function CoursesPage() {
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const user = useAuthStore(s => s.user);
   const queryClient = useQueryClient();
-  const { data: courses, isLoading, error } = useQuery({
+  const { data: courses, isLoading: isLoadingCourses, error: coursesError } = useQuery({
     queryKey: ['courses'],
     queryFn: fetchCourses,
   });
+  const { data: enrollments, isLoading: isLoadingEnrollments } = useQuery({
+    queryKey: ['enrollments', user?.id],
+    queryFn: () => fetchEnrollments(user!.id),
+    enabled: !!user && user.role === 'student',
+  });
+  const enrolledCourseIds = useMemo(() => {
+    if (!enrollments) return new Set();
+    return new Set(enrollments.map(e => e.courseId));
+  }, [enrollments]);
   const createCourseMutation = useMutation({
     mutationFn: (newCourse: Omit<Course, 'id' | 'lessons' | 'tenantId'> & { tenantId: string }) => api<Course>('/api/courses', {
       method: 'POST',
@@ -37,6 +50,19 @@ export default function CoursesPage() {
       toast.error(err instanceof Error ? err.message : 'Failed to create course.');
     },
   });
+  const enrollMutation = useMutation({
+    mutationFn: (courseId: string) => api('/api/enroll', {
+      method: 'POST',
+      body: JSON.stringify({ courseId, studentId: user!.id }),
+    }),
+    onSuccess: (_, courseId) => {
+      queryClient.invalidateQueries({ queryKey: ['enrollments', user?.id] });
+      toast.success(`Successfully enrolled in course!`);
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to enroll.');
+    },
+  });
   const handleCreateCourse = (values: { title: string; description: string }) => {
     if (!user) {
       toast.error('You must be logged in to create a course.');
@@ -45,6 +71,8 @@ export default function CoursesPage() {
     createCourseMutation.mutate({ ...values, teacherId: user.id, tenantId: 'inst-1' });
   };
   const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
+  const isStudent = user?.role === 'student';
+  const isLoading = isLoadingCourses || (isStudent && isLoadingEnrollments);
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
@@ -83,41 +111,59 @@ export default function CoursesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(3)].map((_, i) => (
               <Card key={i}>
-                <CardHeader className="p-0">
-                  <Skeleton className="h-48 w-full" />
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <Skeleton className="h-6 w-3/4 mb-2" />
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-5/6 mt-1" />
-                </CardContent>
+                <CardHeader className="p-0"><Skeleton className="h-48 w-full" /></CardHeader>
+                <CardContent className="pt-6"><Skeleton className="h-6 w-3/4 mb-2" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6 mt-1" /></CardContent>
+                <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
               </Card>
             ))}
           </div>
         )}
-        {error && <p className="text-destructive">Failed to load courses. Please try again later.</p>}
-        {!isLoading && !error && (
+        {coursesError && <p className="text-destructive">Failed to load courses. Please try again later.</p>}
+        {!isLoading && !coursesError && (
           <motion.div
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             variants={containerVariants}
             initial="hidden"
             animate="visible"
           >
-            {courses?.map((course) => (
-              <motion.div key={course.id} variants={itemVariants}>
-                <Link to={`/app/courses/${course.id}`} className="block h-full group">
-                  <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
-                    <CardHeader className="p-0">
-                      <img src={course.imageUrl || 'https://via.placeholder.com/400x200'} alt={course.title} className="w-full h-48 object-cover" />
+            {courses?.map((course) => {
+              const isEnrolled = isStudent && enrolledCourseIds.has(course.id);
+              return (
+                <motion.div key={course.id} variants={itemVariants}>
+                  <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
+                    <CardHeader className="p-0 relative">
+                      <Link to={`/app/courses/${course.id}`} className="block">
+                        <img src={course.imageUrl || 'https://via.placeholder.com/400x200'} alt={course.title} className="w-full h-48 object-cover" />
+                      </Link>
+                      {isEnrolled && <Badge className="absolute top-2 right-2 gap-1"><CheckCircle className="h-3 w-3" /> Enrolled</Badge>}
                     </CardHeader>
                     <CardContent className="flex-grow pt-6">
-                      <CardTitle className="text-xl font-semibold">{course.title}</CardTitle>
+                      <Link to={`/app/courses/${course.id}`}><CardTitle className="text-xl font-semibold hover:text-primary transition-colors">{course.title}</CardTitle></Link>
                       <CardDescription className="mt-2">{course.description}</CardDescription>
                     </CardContent>
+                    <CardFooter>
+                      {isStudent && (
+                        isEnrolled ? (
+                          <Button asChild className="w-full">
+                            <Link to={`/app/courses/${course.id}`}>Go to Course</Link>
+                          </Button>
+                        ) : (
+                          <Button className="w-full" onClick={() => enrollMutation.mutate(course.id)} disabled={enrollMutation.isPending}>
+                            {enrollMutation.isPending && enrollMutation.variables === course.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Enroll Now
+                          </Button>
+                        )
+                      )}
+                      {!isStudent && (
+                         <Button asChild className="w-full">
+                            <Link to={`/app/courses/${course.id}`}>View Course</Link>
+                          </Button>
+                      )}
+                    </CardFooter>
                   </Card>
-                </Link>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </motion.div>
         )}
       </div>

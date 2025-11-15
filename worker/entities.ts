@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution } from "@shared/types";
+import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
   { id: 'inst-1', name: 'Cloudflare University' },
 ];
@@ -98,4 +98,16 @@ export class FlashcardDeckEntity extends IndexedEntity<FlashcardDeck> {
   static readonly indexName = "flashcardDecks";
   static readonly initialState: FlashcardDeck = { id: "", tenantId: "", title: "", description: "", userId: "" };
   static seedData = MOCK_FLASHCARD_DECKS;
+}
+// ENROLLMENT ENTITY
+export class EnrollmentEntity extends IndexedEntity<Enrollment> {
+  static readonly entityName = "enrollment";
+  static readonly indexName = "enrollments";
+  static readonly initialState: Enrollment = { id: "", tenantId: "", courseId: "", studentId: "" };
+}
+// QUIZ SUBMISSION ENTITY
+export class QuizSubmissionEntity extends IndexedEntity<QuizSubmission> {
+  static readonly entityName = "quizSubmission";
+  static readonly indexName = "quizSubmissions";
+  static readonly initialState: QuizSubmission = { id: "", tenantId: "", quizId: "", studentId: "", score: 0, submittedAt: "" };
 }

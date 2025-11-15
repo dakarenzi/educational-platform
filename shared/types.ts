@@ -59,3 +59,17 @@ export interface FlashcardDeck {
   userId: string; // The user who created the deck
   cards?: Flashcard[];
 }
+export interface Enrollment {
+  id: string; // e.g., `${studentId}-${courseId}`
+  tenantId: string;
+  courseId: string;
+  studentId: string;
+}
+export interface QuizSubmission {
+  id: string; // e.g., `${studentId}-${quizId}`
+  tenantId: string;
+  quizId: string;
+  studentId: string;
+  score: number; // Percentage score
+  submittedAt: string; // ISO 8601 date string
+}
