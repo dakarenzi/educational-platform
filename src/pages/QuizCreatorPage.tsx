@@ -2,7 +2,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
@@ -16,7 +16,10 @@ const questionSchema = z.object({
   id: z.string().optional(),
   text: z.string().min(5, 'Question text must be at least 5 characters.'),
   options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
-  correctAnswer: z.coerce.number().min(0).max(3),
+  correctAnswer: z.preprocess(
+    (val) => (typeof val === 'string' ? parseInt(val, 10) : val),
+    z.number().int().min(0).max(3)
+  ),
 });
 const quizFormSchema = z.object({
   title: z.string().min(3, 'Quiz title must be at least 3 characters.'),
@@ -59,8 +62,8 @@ export default function QuizCreatorPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 md:py-10 lg:py-12">
-        <Button asChild variant="ghost" className="mb-8">
-          <Link to={-1 as any}><ArrowLeft className="mr-2 h-4 w-4" />Back to Course</Link>
+        <Button variant="ghost" className="mb-8" onClick={() => navigate(-1)}>
+          <ArrowLeft className="mr-2 h-4 w-4" />Back to Course
         </Button>
         <h1 className="text-4xl font-bold font-display text-foreground">Quiz Creator</h1>
         <p className="mt-2 text-lg text-muted-foreground">Build an interactive quiz for your lesson.</p>
