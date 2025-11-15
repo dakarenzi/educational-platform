@@ -1,35 +1,57 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import type { Course } from '@shared/types';
+import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { CourseForm } from '@/components/forms/CourseForm';
 const fetchCourses = async (): Promise<Course[]> => {
   return api<Course[]>('/api/courses');
 };
 export default function CoursesPage() {
+  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const user = useAuthStore(s => s.user);
+  const queryClient = useQueryClient();
   const { data: courses, isLoading, error } = useQuery({
     queryKey: ['courses'],
     queryFn: fetchCourses,
   });
+  const createCourseMutation = useMutation({
+    mutationFn: (newCourse: Omit<Course, 'id' | 'lessons'>) => api<Course>('/api/courses', {
+      method: 'POST',
+      body: JSON.stringify(newCourse),
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      toast.success('Course created successfully!');
+      setCreateDialogOpen(false);
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to create course.');
+    },
+  });
+  const handleCreateCourse = (values: { title: string; description: string }) => {
+    if (!user) {
+      toast.error('You must be logged in to create a course.');
+      return;
+    }
+    createCourseMutation.mutate({ ...values, teacherId: user.id });
+  };
+  const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
   const containerVariants = {
     hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
+    visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
   };
   const itemVariants = {
     hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-    },
+    visible: { y: 0, opacity: 1 },
   };
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -37,14 +59,25 @@ export default function CoursesPage() {
         <div className="flex justify-between items-center mb-12">
           <div>
             <h1 className="text-4xl font-bold font-display text-foreground">Courses</h1>
-            <p className="mt-2 text-lg text-muted-foreground">
-              Browse available courses or create a new one.
-            </p>
+            <p className="mt-2 text-lg text-muted-foreground">Browse available courses or create a new one.</p>
           </div>
-          <Button size="lg" className="gap-2">
-            <PlusCircle className="h-5 w-5" />
-            Create Course
-          </Button>
+          {isTeacherOrAdmin && (
+            <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" className="gap-2">
+                  <PlusCircle className="h-5 w-5" />
+                  Create Course
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Create a New Course</DialogTitle>
+                  <DialogDescription>Fill in the details below to create a new course.</DialogDescription>
+                </DialogHeader>
+                <CourseForm onSubmit={handleCreateCourse} isLoading={createCourseMutation.isPending} />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
