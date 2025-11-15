@@ -76,6 +76,26 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
     const courseWithLessons: Course = { ...course, lessons: courseLessons };
     return ok(c, courseWithLessons);
   });
+  app.put('/api/courses/:id', async (c) => {
+    const tenantId = c.get('tenantId');
+    const { id } = c.req.param();
+    const { title, description } = (await c.req.json()) as Partial<Omit<Course, 'id' | 'tenantId' | 'teacherId'>>;
+    if (!isStr(title) || !isStr(description)) {
+        return bad(c, 'title and description are required');
+    }
+    const courseEntity = new CourseEntity(c.env, id);
+    if (!(await courseEntity.exists())) {
+        return notFound(c, 'Course not found');
+    }
+    const currentCourse = await courseEntity.getState();
+    if (currentCourse.tenantId !== tenantId) {
+        return notFound(c, 'Course not found in this institution');
+    }
+    // In a real app, you'd also verify the teacherId from auth context matches currentCourse.teacherId
+    const updatedCourse = { ...currentCourse, title, description };
+    await courseEntity.save(updatedCourse);
+    return ok(c, updatedCourse);
+  });
   // TEACHER-SPECIFIC ROUTES
   app.get('/api/teacher/courses', async (c) => {
     const tenantId = c.get('tenantId');
@@ -86,6 +106,15 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
     const allCourses = await CourseEntity.list(c.env, tenantId);
     const teacherCourses = allCourses.items.filter(course => course.teacherId === teacherId);
     return ok(c, teacherCourses);
+  });
+  app.get('/api/teacher/flashcard-decks', async (c) => {
+    const tenantId = c.get('tenantId');
+    const teacherId = 'user-teacher-1'; // Mocked teacher ID
+    await FlashcardDeckEntity.ensureSeed(c.env, tenantId);
+    const allDecks = await FlashcardDeckEntity.list(c.env, tenantId);
+    const teacherDecks = allDecks.items.filter(deck => deck.userId === teacherId);
+    const decksWithoutCards = teacherDecks.map(({ cards, ...deck }) => deck);
+    return ok(c, decksWithoutCards);
   });
   // LESSONS
   app.post('/api/lessons', async (c) => {

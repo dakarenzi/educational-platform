@@ -17,7 +17,8 @@ const fetchTeacherCourses = async (): Promise<Course[]> => {
   return api<Course[]>('/api/teacher/courses');
 };
 export default function TeacherCoursesPage() {
-  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isDialogOpen, setDialogOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const user = useAuthStore(s => s.user);
   const queryClient = useQueryClient();
   const { data: courses, isLoading, error } = useQuery({
@@ -31,20 +32,48 @@ export default function TeacherCoursesPage() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teacher-courses'] });
-      queryClient.invalidateQueries({ queryKey: ['courses'] }); // Invalidate general courses list too
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
       toast.success('Course created successfully!');
-      setCreateDialogOpen(false);
+      setDialogOpen(false);
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Failed to create course.');
     },
   });
-  const handleCreateCourse = (values: { title: string; description: string }) => {
-    if (!user) {
-      toast.error('You must be logged in to create a course.');
-      return;
+  const updateCourseMutation = useMutation({
+    mutationFn: (updatedCourse: Pick<Course, 'id' | 'title' | 'description'>) => api<Course>(`/api/courses/${updatedCourse.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(updatedCourse),
+    }),
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['teacher-courses'] });
+        queryClient.invalidateQueries({ queryKey: ['courses'] });
+        toast.success('Course updated successfully!');
+        setDialogOpen(false);
+        setEditingCourse(null);
+    },
+    onError: (err) => {
+        toast.error(err instanceof Error ? err.message : 'Failed to update course.');
+    },
+  });
+  const handleFormSubmit = (values: { title: string; description: string }) => {
+    if (editingCourse) {
+        updateCourseMutation.mutate({ ...values, id: editingCourse.id });
+    } else {
+        if (!user) {
+            toast.error('You must be logged in to create a course.');
+            return;
+        }
+        createCourseMutation.mutate({ ...values, teacherId: user.id, tenantId: 'inst-1' });
     }
-    createCourseMutation.mutate({ ...values, teacherId: user.id, tenantId: 'inst-1' });
+  };
+  const openCreateDialog = () => {
+    setEditingCourse(null);
+    setDialogOpen(true);
+  };
+  const openEditDialog = (course: Course) => {
+    setEditingCourse(course);
+    setDialogOpen(true);
   };
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -61,22 +90,26 @@ export default function TeacherCoursesPage() {
           <h1 className="text-3xl font-bold font-display text-foreground">Manage Your Courses</h1>
           <p className="mt-2 text-lg text-muted-foreground">Here are all the courses you've created.</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <PlusCircle className="h-5 w-5" />
-              Create New Course
-            </Button>
-          </DialogTrigger>
+        <Button className="gap-2" onClick={openCreateDialog}>
+            <PlusCircle className="h-5 w-5" />
+            Create New Course
+        </Button>
+      </div>
+      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
-              <DialogTitle>Create a New Course</DialogTitle>
-              <DialogDescription>Fill in the details below to create a new course.</DialogDescription>
+              <DialogTitle>{editingCourse ? 'Edit Course' : 'Create a New Course'}</DialogTitle>
+              <DialogDescription>
+                {editingCourse ? 'Update the details for your course.' : 'Fill in the details below to create a new course.'}
+              </DialogDescription>
             </DialogHeader>
-            <CourseForm onSubmit={handleCreateCourse} isLoading={createCourseMutation.isPending} />
+            <CourseForm
+                onSubmit={handleFormSubmit}
+                isLoading={createCourseMutation.isPending || updateCourseMutation.isPending}
+                initialData={editingCourse || undefined}
+            />
           </DialogContent>
         </Dialog>
-      </div>
       {isLoading && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {[...Array(2)].map((_, i) => (
@@ -93,8 +126,8 @@ export default function TeacherCoursesPage() {
         courses?.length === 0 ? (
           <div className="text-center py-16 border-2 border-dashed rounded-lg">
             <h3 className="text-xl font-semibold">You haven't created any courses yet.</h3>
-            <p className="text-muted-foreground mt-2 mb-4">Click the button below to get started.</p>
-            <Button onClick={() => setCreateDialogOpen(true)}>
+            <p className="text-muted-foreground mt-2 mb-4">Click the button above to get started.</p>
+            <Button onClick={openCreateDialog}>
               <PlusCircle className="mr-2 h-4 w-4" /> Create Your First Course
             </Button>
           </div>
@@ -120,7 +153,7 @@ export default function TeacherCoursesPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem asChild><Link to={`/app/courses/${course.id}`}><Eye className="mr-2 h-4 w-4" />View Course</Link></DropdownMenuItem>
-                          <DropdownMenuItem disabled><FilePenLine className="mr-2 h-4 w-4" />Edit Course</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEditDialog(course)}><FilePenLine className="mr-2 h-4 w-4" />Edit Course</DropdownMenuItem>
                           <DropdownMenuItem asChild><Link to="/app/analytics"><BarChart2 className="mr-2 h-4 w-4" />View Analytics</Link></DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

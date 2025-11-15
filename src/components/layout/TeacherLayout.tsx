@@ -2,12 +2,12 @@ import React from "react";
 import { Outlet, NavLink, Navigate } from "react-router-dom";
 import { useAuthStore } from "@/store/auth";
 import { Card, CardContent } from "@/components/ui/card";
-import { Book, ClipboardList, Presentation, LayoutDashboard } from "lucide-react";
+import { Book, Presentation, LayoutDashboard } from "lucide-react";
 import { cn } from "@/lib/utils";
 const teacherNavItems = [
   { to: '/app/teacher/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/app/teacher/courses', icon: Book, label: 'Manage Courses' },
-  { to: '/app/flashcards', icon: Presentation, label: 'Manage Flashcards' },
+  { to: '/app/teacher/flashcards', icon: Presentation, label: 'Manage Flashcards' },
 ];
 export function TeacherLayout() {
   const user = useAuthStore(s => s.user);
@@ -27,7 +27,7 @@ export function TeacherLayout() {
                     <NavLink
                       key={item.label}
                       to={item.to}
-                      end={item.to.endsWith('dashboard') || item.to.endsWith('courses')}
+                      end
                       className={({ isActive }) =>
                         cn(
                           'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
