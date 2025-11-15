@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { PlusCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { api } from '@/lib/api-client';
 import type { Course } from '@shared/types';
 import { Button } from '@/components/ui/button';
@@ -49,17 +50,14 @@ export default function CoursesPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {[...Array(3)].map((_, i) => (
               <Card key={i}>
-                <CardHeader>
+                <CardHeader className="p-0">
                   <Skeleton className="h-48 w-full" />
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   <Skeleton className="h-6 w-3/4 mb-2" />
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-5/6 mt-1" />
                 </CardContent>
-                <CardFooter>
-                  <Skeleton className="h-10 w-28" />
-                </CardFooter>
               </Card>
             ))}
           </div>
@@ -74,18 +72,17 @@ export default function CoursesPage() {
           >
             {courses?.map((course) => (
               <motion.div key={course.id} variants={itemVariants}>
-                <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
-                  <CardHeader className="p-0">
-                    <img src={course.imageUrl || 'https://via.placeholder.com/400x200'} alt={course.title} className="w-full h-48 object-cover" />
-                  </CardHeader>
-                  <CardContent className="flex-grow pt-6">
-                    <CardTitle className="text-xl font-semibold">{course.title}</CardTitle>
-                    <CardDescription className="mt-2">{course.description}</CardDescription>
-                  </CardContent>
-                  <CardFooter>
-                    <Button className="w-full">View Course</Button>
-                  </CardFooter>
-                </Card>
+                <Link to={`/app/courses/${course.id}`} className="block h-full group">
+                  <Card className="h-full flex flex-col overflow-hidden transition-all duration-300 group-hover:shadow-xl group-hover:-translate-y-1">
+                    <CardHeader className="p-0">
+                      <img src={course.imageUrl || 'https://via.placeholder.com/400x200'} alt={course.title} className="w-full h-48 object-cover" />
+                    </CardHeader>
+                    <CardContent className="flex-grow pt-6">
+                      <CardTitle className="text-xl font-semibold">{course.title}</CardTitle>
+                      <CardDescription className="mt-2">{course.description}</CardDescription>
+                    </CardContent>
+                  </Card>
+                </Link>
               </motion.div>
             ))}
           </motion.div>

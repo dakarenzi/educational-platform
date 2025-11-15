@@ -17,6 +17,7 @@ import LoginPage from '@/pages/LoginPage';
 import { AppLayout } from '@/components/layout/AppLayout';
 import DashboardPage from '@/pages/HomePage';
 import CoursesPage from '@/pages/CoursesPage';
+import CourseDetailPage from '@/pages/CourseDetailPage';
 import FlashcardsPage from '@/pages/FlashcardsPage';
 import TutorPage from '@/pages/TutorPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
@@ -35,6 +36,7 @@ const router = createBrowserRouter([
         { index: true, element: <Navigate to="/app/dashboard" replace /> },
         { path: "dashboard", element: <DashboardPage /> },
         { path: "courses", element: <CoursesPage /> },
+        { path: "courses/:courseId", element: <CourseDetailPage /> },
         { path: "flashcards", element: <FlashcardsPage /> },
         { path: "tutor", element: <TutorPage /> },
         { path: "analytics", element: <AnalyticsPage /> },
