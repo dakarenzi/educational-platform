@@ -21,6 +21,8 @@ import CourseDetailPage from '@/pages/CourseDetailPage';
 import FlashcardsPage from '@/pages/FlashcardsPage';
 import TutorPage from '@/pages/TutorPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
+import QuizCreatorPage from '@/pages/QuizCreatorPage';
+import QuizTakerPage from '@/pages/QuizTakerPage';
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -37,6 +39,8 @@ const router = createBrowserRouter([
         { path: "dashboard", element: <DashboardPage /> },
         { path: "courses", element: <CoursesPage /> },
         { path: "courses/:courseId", element: <CourseDetailPage /> },
+        { path: "lesson/:lessonId/quiz", element: <QuizCreatorPage /> },
+        { path: "quiz/:quizId", element: <QuizTakerPage /> },
         { path: "flashcards", element: <FlashcardsPage /> },
         { path: "tutor", element: <TutorPage /> },
         { path: "analytics", element: <AnalyticsPage /> },

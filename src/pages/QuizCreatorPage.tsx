@@ -2,7 +2,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
@@ -12,11 +12,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Separator } from '@/components/ui/separator';
 const questionSchema = z.object({
-  id: z.string(),
   text: z.string().min(5, 'Question text must be at least 5 characters.'),
   options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
-  correctAnswer: z.number().int().min(0).max(3),
+  correctAnswer: z.coerce.number().min(0).max(3),
 });
 const quizFormSchema = z.object({
   title: z.string().min(3, 'Quiz title must be at least 3 characters.'),
@@ -31,7 +31,7 @@ export default function QuizCreatorPage() {
     resolver: zodResolver(quizFormSchema),
     defaultValues: {
       title: '',
-      questions: [{ id: crypto.randomUUID(), text: '', options: ['', '', '', ''], correctAnswer: 0 }],
+      questions: [{ text: '', options: ['', '', '', ''], correctAnswer: 0 }],
     },
   });
   const { fields, append, remove } = useFieldArray({
@@ -39,11 +39,11 @@ export default function QuizCreatorPage() {
     name: 'questions',
   });
   const createQuizMutation = useMutation({
-    mutationFn: (newQuiz: Omit<Quiz, 'id' | 'tenantId'>) => api<Quiz>('/api/quizzes', {
+    mutationFn: (newQuiz: Omit<Quiz, 'id'>) => api<Quiz>('/api/quizzes', {
       method: 'POST',
       body: JSON.stringify(newQuiz),
     }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['course'] });
       toast.success('Quiz created successfully!');
       navigate(-1);
@@ -59,8 +59,8 @@ export default function QuizCreatorPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 md:py-10 lg:py-12">
-        <Button variant="ghost" className="mb-8" onClick={() => navigate(-1)}>
-          <ArrowLeft className="mr-2 h-4 w-4" />Back to Course
+        <Button asChild variant="ghost" className="mb-8">
+          <Link to={-1 as any}><ArrowLeft className="mr-2 h-4 w-4" />Back to Course</Link>
         </Button>
         <h1 className="text-4xl font-bold font-display text-foreground">Quiz Creator</h1>
         <p className="mt-2 text-lg text-muted-foreground">Build an interactive quiz for your lesson.</p>
@@ -114,11 +114,7 @@ export default function QuizCreatorPage() {
                       <FormItem className="space-y-3">
                         <FormLabel>Options (select the correct answer)</FormLabel>
                         <FormControl>
-                          <RadioGroup
-                            onValueChange={(value) => field.onChange(parseInt(value, 10))}
-                            defaultValue={String(field.value)}
-                            className="flex flex-col space-y-1"
-                          >
+                          <RadioGroup onValueChange={field.onChange} defaultValue={String(field.value)} className="flex flex-col space-y-1">
                             {[0, 1, 2, 3].map((optionIndex) => (
                               <div key={optionIndex} className="flex items-center gap-2">
                                 <RadioGroupItem value={String(optionIndex)} id={`q${index}-o${optionIndex}`} />
@@ -143,7 +139,7 @@ export default function QuizCreatorPage() {
               </Card>
             ))}
             <div className="flex justify-between items-center">
-              <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), text: '', options: ['', '', '', ''], correctAnswer: 0 })}>
+              <Button type="button" variant="outline" onClick={() => append({ text: '', options: ['', '', '', ''], correctAnswer: 0 })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Question
               </Button>
               <Button type="submit" size="lg" disabled={createQuizMutation.isPending}>

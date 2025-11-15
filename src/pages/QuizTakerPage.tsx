@@ -1,24 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, XCircle, ArrowLeft, ArrowRight, Award } from 'lucide-react';
-import { toast } from 'sonner';
+import Confetti from 'react-dom-confetti';
 import { api } from '@/lib/api-client';
 import type { Quiz } from '@shared/types';
-import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-const Confetti = (props: any) => null;
+import { cn } from '@/lib/utils';
 const fetchQuiz = async (quizId: string): Promise<Quiz> => {
   return api<Quiz>(`/api/quizzes/${quizId}`);
 };
 export default function QuizTakerPage() {
   const { quizId } = useParams<{ quizId: string }>();
-  const user = useAuthStore(s => s.user);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [isFinished, setIsFinished] = useState(false);
@@ -27,30 +25,12 @@ export default function QuizTakerPage() {
     queryFn: () => fetchQuiz(quizId!),
     enabled: !!quizId,
   });
-  const submitQuizMutation = useMutation({
-    mutationFn: (submission: { quizId: string; studentId: string; score: number }) => api('/api/quiz/submit', {
-      method: 'POST',
-      body: JSON.stringify(submission),
-    }),
-    onSuccess: () => {
-      toast.success('Quiz results saved!');
-    },
-    onError: (err) => {
-      toast.error(err instanceof Error ? err.message : 'Failed to save quiz results.');
-    },
-  });
   const score = quiz ? Object.entries(selectedAnswers).reduce((acc, [qIndex, aIndex]) => {
     if (quiz.questions[Number(qIndex)].correctAnswer === aIndex) {
       return acc + 1;
     }
     return acc;
   }, 0) : 0;
-  const percentage = quiz ? Math.round((score / quiz.questions.length) * 100) : 0;
-  useEffect(() => {
-    if (isFinished && quizId && user) {
-      submitQuizMutation.mutate({ quizId, studentId: user.id, score: percentage });
-    }
-  }, [isFinished, quizId, user, percentage, submitQuizMutation]);
   if (isLoading) return <div className="max-w-2xl mx-auto p-8"><Skeleton className="h-96 w-full" /></div>;
   if (error) return <div className="text-center p-8 text-destructive">Failed to load quiz.</div>;
   if (!quiz) return null;
@@ -67,6 +47,7 @@ export default function QuizTakerPage() {
     if (currentQuestionIndex > 0) setCurrentQuestionIndex(i => i - 1);
   };
   if (isFinished) {
+    const percentage = Math.round((score / quiz.questions.length) * 100);
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
         <Confetti active={percentage >= 80} config={{ spread: 90, elementCount: 200 }} />

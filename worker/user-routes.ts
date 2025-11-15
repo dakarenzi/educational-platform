@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, CourseEntity, LessonEntity } from "./entities";
+import { UserEntity, CourseEntity, LessonEntity, QuizEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson } from "@shared/types";
+import type { Course, Lesson, Quiz } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'AcademiCloud API' }}));
   // USERS
@@ -33,11 +33,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       return notFound(c, 'Course not found');
     }
     const course = await courseEntity.getState();
-    // Seed and fetch all lessons
+    // Seed and fetch all lessons and quizzes
     await LessonEntity.ensureSeed(c.env);
+    await QuizEntity.ensureSeed(c.env);
     const allLessons = await LessonEntity.list(c.env);
-    // Filter lessons for this course
-    const courseLessons = allLessons.items.filter(lesson => lesson.courseId === id);
+    const allQuizzes = await QuizEntity.list(c.env);
+    // Create a map of quizzes by lessonId for efficient lookup
+    const quizMap = new Map<string, Quiz>();
+    allQuizzes.items.forEach(quiz => quizMap.set(quiz.lessonId, quiz));
+    // Filter lessons for this course and attach quizzes
+    const courseLessons = allLessons.items
+      .filter(lesson => lesson.courseId === id)
+      .map(lesson => ({
+        ...lesson,
+        quiz: quizMap.get(lesson.id)
+      }));
     const courseWithLessons: Course = { ...course, lessons: courseLessons };
     return ok(c, courseWithLessons);
   });
@@ -50,5 +60,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const newLesson = { id: crypto.randomUUID(), courseId, title, content };
     const created = await LessonEntity.create(c.env, newLesson);
     return ok(c, created);
+  });
+  // QUIZZES
+  app.post('/api/quizzes', async (c) => {
+    const quizData = (await c.req.json()) as Partial<Omit<Quiz, 'id'>>;
+    if (!isStr(quizData.lessonId) || !isStr(quizData.title) || !Array.isArray(quizData.questions)) {
+        return bad(c, 'lessonId, title, and questions array are required');
+    }
+    const newQuiz = { id: `quiz-${quizData.lessonId}`, ...quizData } as Quiz;
+    // Ensure question IDs are unique
+    newQuiz.questions.forEach(q => { if (!q.id) q.id = crypto.randomUUID() });
+    const created = await QuizEntity.create(c.env, newQuiz);
+    return ok(c, created);
+  });
+  app.get('/api/quizzes/:id', async (c) => {
+    const { id } = c.req.param();
+    const quizEntity = new QuizEntity(c.env, id);
+    if (!(await quizEntity.exists())) {
+      return notFound(c, 'Quiz not found');
+    }
+    const quiz = await quizEntity.getState();
+    return ok(c, quiz);
   });
 }
