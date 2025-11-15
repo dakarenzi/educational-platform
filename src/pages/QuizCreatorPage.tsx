@@ -6,7 +6,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
-import type { Quiz, QuizQuestion } from '@shared/types';
+import type { Quiz } from '@shared/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -57,7 +57,7 @@ export default function QuizCreatorPage() {
   });
   const onSubmit = (values: QuizFormValues) => {
     if (!lessonId) return;
-    createQuizMutation.mutate({ ...values, lessonId, questions: values.questions as QuizQuestion[] });
+    createQuizMutation.mutate({ ...values, lessonId });
   };
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
