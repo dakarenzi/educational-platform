@@ -9,11 +9,15 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import { api } from '@/lib/api-client';
+import type { Institution } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Skeleton } from '@/components/ui/skeleton';
 const navItems = [
   { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/app/courses', icon: Book, label: 'Courses' },
@@ -21,10 +25,17 @@ const navItems = [
   { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
   { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics' },
 ];
+const fetchInstitution = async (): Promise<Institution> => {
+  return api<Institution>('/api/institution');
+};
 export function AcademiCloudSidebar() {
   const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
   const navigate = useNavigate();
+  const { data: institution, isLoading } = useQuery({
+    queryKey: ['institution'],
+    queryFn: fetchInstitution,
+  });
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -36,7 +47,11 @@ export function AcademiCloudSidebar() {
     <aside className="hidden md:flex flex-col w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="p-4 border-b border-sidebar-border flex items-center gap-3">
         <GraduationCap className="h-8 w-8 text-primary" />
-        <h1 className="text-xl font-bold font-display text-sidebar-foreground">AcademiCloud</h1>
+        {isLoading ? (
+          <Skeleton className="h-6 w-36" />
+        ) : (
+          <h1 className="text-xl font-bold font-display text-sidebar-foreground">{institution?.name || 'AcademiCloud'}</h1>
+        )}
       </div>
       <nav className="flex-1 px-2 py-4 space-y-1">
         <TooltipProvider>

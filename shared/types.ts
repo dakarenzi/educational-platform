@@ -3,15 +3,21 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+export interface Institution {
+  id: string;
+  name: string;
+}
 export type UserRole = 'admin' | 'teacher' | 'student';
 export interface User {
   id: string;
+  tenantId: string;
   name: string;
   role: UserRole;
   avatarUrl?: string;
 }
 export interface Course {
   id: string;
+  tenantId: string;
   title: string;
   description: string;
   teacherId: string;
@@ -20,6 +26,7 @@ export interface Course {
 }
 export interface Lesson {
   id: string;
+  tenantId: string;
   courseId: string;
   title: string;
   content: string; // Can be markdown or JSON for a block editor
@@ -33,6 +40,7 @@ export interface QuizQuestion {
 }
 export interface Quiz {
   id: string;
+  tenantId: string;
   lessonId: string;
   title: string;
   questions: QuizQuestion[];
@@ -45,6 +53,7 @@ export interface Flashcard {
 }
 export interface FlashcardDeck {
   id: string;
+  tenantId: string;
   title: string;
   description: string;
   userId: string; // The user who created the deck
