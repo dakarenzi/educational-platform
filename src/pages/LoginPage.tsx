@@ -70,7 +70,7 @@ export default function LoginPage() {
                 <Button
                   key={role}
                   onClick={() => handleLogin(role)}
-                  className="w-full h-auto py-4 justify-start text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
+                  className="w-full h-auto py-4 justify-start text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:bg-primary/10"
                   variant="outline"
                 >
                   <Icon className="w-8 h-8 mr-4 text-primary" />
@@ -85,7 +85,7 @@ export default function LoginPage() {
         </Card>
       </motion.div>
       <footer className="absolute bottom-6 text-center text-muted-foreground/80 text-sm">
-        <p>Built with ❤�� at Cloudflare</p>
+        <p>Built with ❤️ at Cloudflare</p>
       </footer>
     </div>
   );
