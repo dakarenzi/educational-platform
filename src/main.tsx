@@ -24,6 +24,7 @@ import TutorPage from '@/pages/TutorPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import QuizCreatorPage from '@/pages/QuizCreatorPage';
 import QuizTakerPage from '@/pages/QuizTakerPage';
+import MyProgressPage from '@/pages/student/MyProgressPage';
 // Teacher Tools
 import { TeacherLayout } from '@/components/layout/TeacherLayout';
 import TeacherDashboardPage from '@/pages/teacher/TeacherDashboardPage';
@@ -51,6 +52,7 @@ const router = createBrowserRouter([
         { path: "flashcards/:deckId", element: <FlashcardDeckPage /> },
         { path: "tutor", element: <TutorPage /> },
         { path: "analytics", element: <AnalyticsPage /> },
+        { path: "my-progress", element: <MyProgressPage /> },
         {
           path: "teacher",
           element: <TeacherLayout />,
