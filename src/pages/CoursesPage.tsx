@@ -24,7 +24,7 @@ export default function CoursesPage() {
     queryFn: fetchCourses,
   });
   const createCourseMutation = useMutation({
-    mutationFn: (newCourse: Omit<Course, 'id' | 'lessons'>) => api<Course>('/api/courses', {
+    mutationFn: (newCourse: Omit<Course, 'id' | 'lessons' | 'tenantId'> & { tenantId: string }) => api<Course>('/api/courses', {
       method: 'POST',
       body: JSON.stringify(newCourse),
     }),
@@ -42,7 +42,7 @@ export default function CoursesPage() {
       toast.error('You must be logged in to create a course.');
       return;
     }
-    createCourseMutation.mutate({ ...values, teacherId: user.id });
+    createCourseMutation.mutate({ ...values, teacherId: user.id, tenantId: 'inst-1' });
   };
   const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
   const containerVariants = {
