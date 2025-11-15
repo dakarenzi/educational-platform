@@ -108,4 +108,22 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const created = await FlashcardDeckEntity.create(c.env, newDeck);
     return ok(c, created);
   });
+  app.put('/api/flashcard-decks/:id', async (c) => {
+    const { id } = c.req.param();
+    const deckData = (await c.req.json()) as FlashcardDeck;
+    if (!deckData || !Array.isArray(deckData.cards)) {
+        return bad(c, 'Invalid deck data provided');
+    }
+    const deckEntity = new FlashcardDeckEntity(c.env, id);
+    if (!(await deckEntity.exists())) {
+        return notFound(c, 'Flashcard deck not found');
+    }
+    // Ensure card IDs are present
+    deckData.cards.forEach(card => {
+        if (!card.id) card.id = crypto.randomUUID();
+        card.deckId = id;
+    });
+    await deckEntity.save(deckData);
+    return ok(c, deckData);
+  });
 }
