@@ -28,6 +28,7 @@ import QuizTakerPage from '@/pages/QuizTakerPage';
 import { TeacherLayout } from '@/components/layout/TeacherLayout';
 import TeacherDashboardPage from '@/pages/teacher/TeacherDashboardPage';
 import TeacherCoursesPage from '@/pages/teacher/TeacherCoursesPage';
+import TeacherFlashcardsPage from '@/pages/teacher/TeacherFlashcardsPage';
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -57,6 +58,7 @@ const router = createBrowserRouter([
             { index: true, element: <Navigate to="/app/teacher/dashboard" replace /> },
             { path: "dashboard", element: <TeacherDashboardPage /> },
             { path: "courses", element: <TeacherCoursesPage /> },
+            { path: "flashcards", element: <TeacherFlashcardsPage /> },
           ]
         }
     ]
