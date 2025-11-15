@@ -39,7 +39,7 @@ export default function QuizCreatorPage() {
     name: 'questions',
   });
   const createQuizMutation = useMutation({
-    mutationFn: (newQuiz: Omit<Quiz, 'id'>) => api<Quiz>('/api/quizzes', {
+    mutationFn: (newQuiz: Omit<Quiz, 'id' | 'tenantId'>) => api<Quiz>('/api/quizzes', {
       method: 'POST',
       body: JSON.stringify(newQuiz),
     }),
