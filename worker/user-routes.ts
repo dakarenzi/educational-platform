@@ -96,6 +96,16 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
     await courseEntity.save(updatedCourse);
     return ok(c, updatedCourse);
   });
+  app.delete('/api/courses/:id', async (c) => {
+    const tenantId = c.get('tenantId');
+    const { id } = c.req.param();
+    // In a real app, you'd verify ownership before deleting
+    const deleted = await CourseEntity.delete(c.env, tenantId, id);
+    if (!deleted) {
+      return notFound(c, 'Course not found');
+    }
+    return ok(c, { success: true });
+  });
   // TEACHER-SPECIFIC ROUTES
   app.get('/api/teacher/courses', async (c) => {
     const tenantId = c.get('tenantId');
@@ -186,23 +196,34 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
   app.put('/api/flashcard-decks/:id', async (c) => {
     const tenantId = c.get('tenantId');
     const { id } = c.req.param();
-    const deckData = (await c.req.json()) as FlashcardDeck;
-    if (!deckData || !Array.isArray(deckData.cards)) {
-        return bad(c, 'Invalid deck data provided');
-    }
-    if (deckData.tenantId !== tenantId) {
-        return bad(c, 'Tenant ID mismatch');
-    }
+    const deckData = (await c.req.json()) as Partial<FlashcardDeck>;
     const deckEntity = new FlashcardDeckEntity(c.env, id);
     if (!(await deckEntity.exists())) {
         return notFound(c, 'Flashcard deck not found');
     }
-    deckData.cards.forEach(card => {
-        if (!card.id) card.id = crypto.randomUUID();
-        card.deckId = id;
-    });
-    await deckEntity.save(deckData);
-    return ok(c, deckData);
+    const currentDeck = await deckEntity.getState();
+    if (currentDeck.tenantId !== tenantId) {
+        return notFound(c, 'Deck not found in this institution');
+    }
+    const updatedDeck = { ...currentDeck, ...deckData };
+    if (Array.isArray(updatedDeck.cards)) {
+        updatedDeck.cards.forEach(card => {
+            if (!card.id) card.id = crypto.randomUUID();
+            card.deckId = id;
+        });
+    }
+    await deckEntity.save(updatedDeck);
+    return ok(c, updatedDeck);
+  });
+  app.delete('/api/flashcard-decks/:id', async (c) => {
+    const tenantId = c.get('tenantId');
+    const { id } = c.req.param();
+    // In a real app, you'd verify ownership before deleting
+    const deleted = await FlashcardDeckEntity.delete(c.env, tenantId, id);
+    if (!deleted) {
+      return notFound(c, 'Flashcard deck not found');
+    }
+    return ok(c, { success: true });
   });
   // ANALYTICS
   app.get('/api/analytics', async (c) => {

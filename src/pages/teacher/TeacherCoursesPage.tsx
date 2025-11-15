@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { PlusCircle, MoreVertical, Eye, FilePenLine, BarChart2 } from 'lucide-react';
+import { PlusCircle, MoreVertical, Eye, FilePenLine, BarChart2, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -10,8 +10,9 @@ import { useAuthStore } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { CourseForm } from '@/components/forms/CourseForm';
 const fetchTeacherCourses = async (): Promise<Course[]> => {
   return api<Course[]>('/api/teacher/courses');
@@ -56,6 +57,17 @@ export default function TeacherCoursesPage() {
         toast.error(err instanceof Error ? err.message : 'Failed to update course.');
     },
   });
+  const deleteCourseMutation = useMutation({
+    mutationFn: (courseId: string) => api(`/api/courses/${courseId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['teacher-courses'] });
+      queryClient.invalidateQueries({ queryKey: ['courses'] });
+      toast.success('Course deleted successfully!');
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete course.');
+    },
+  });
   const handleFormSubmit = (values: { title: string; description: string }) => {
     if (editingCourse) {
         updateCourseMutation.mutate({ ...values, id: editingCourse.id });
@@ -95,7 +107,7 @@ export default function TeacherCoursesPage() {
             Create New Course
         </Button>
       </div>
-      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={(isOpen) => { if (!isOpen) setEditingCourse(null); setDialogOpen(isOpen); }}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>{editingCourse ? 'Edit Course' : 'Create a New Course'}</DialogTitle>
@@ -155,6 +167,28 @@ export default function TeacherCoursesPage() {
                           <DropdownMenuItem asChild><Link to={`/app/courses/${course.id}`}><Eye className="mr-2 h-4 w-4" />View Course</Link></DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEditDialog(course)}><FilePenLine className="mr-2 h-4 w-4" />Edit Course</DropdownMenuItem>
                           <DropdownMenuItem asChild><Link to="/app/analytics"><BarChart2 className="mr-2 h-4 w-4" />View Analytics</Link></DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                                <Trash2 className="mr-2 h-4 w-4" />Delete Course
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the course and all its associated lessons and quizzes.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => deleteCourseMutation.mutate(course.id)} className="bg-destructive hover:bg-destructive/90">
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
