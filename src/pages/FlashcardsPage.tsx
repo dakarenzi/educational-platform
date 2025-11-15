@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CourseForm } from '@/components/forms/CourseForm'; // Re-using for simplicity
+import { FlashcardDeckForm } from '@/components/forms/FlashcardDeckForm';
 const fetchDecks = async (): Promise<FlashcardDeck[]> => {
   return api<FlashcardDeck[]>('/api/flashcard-decks');
 };
@@ -72,7 +72,7 @@ export default function FlashcardsPage() {
                 <DialogTitle>Create a New Deck</DialogTitle>
                 <DialogDescription>Fill in the details for your new flashcard deck.</DialogDescription>
               </DialogHeader>
-              <CourseForm onSubmit={handleCreateDeck} isLoading={createDeckMutation.isPending} />
+              <FlashcardDeckForm onSubmit={handleCreateDeck} isLoading={createDeckMutation.isPending} />
             </DialogContent>
           </Dialog>
         </div>
