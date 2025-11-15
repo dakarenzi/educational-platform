@@ -1,8 +1,8 @@
 import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
-import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity } from "./entities";
+import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -224,6 +224,46 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
       return notFound(c, 'Flashcard deck not found');
     }
     return ok(c, { success: true });
+  });
+  // STUDENT ENROLLMENT & PROGRESS
+  app.post('/api/enroll', async (c) => {
+    const tenantId = c.get('tenantId');
+    const { courseId, studentId } = (await c.req.json()) as { courseId: string; studentId: string };
+    if (!isStr(courseId) || !isStr(studentId)) {
+      return bad(c, 'courseId and studentId are required');
+    }
+    const enrollmentId = `${studentId}-${courseId}`;
+    const newEnrollment: Enrollment = { id: enrollmentId, tenantId, courseId, studentId };
+    const created = await EnrollmentEntity.create(c.env, tenantId, newEnrollment);
+    return ok(c, created);
+  });
+  app.get('/api/student/enrollments', async (c) => {
+    const tenantId = c.get('tenantId');
+    const studentId = c.req.query('studentId'); // In a real app, get this from auth context
+    if (!isStr(studentId)) {
+      return bad(c, 'studentId is required');
+    }
+    const allEnrollments = await EnrollmentEntity.list(c.env, tenantId);
+    const studentEnrollments = allEnrollments.items.filter(e => e.studentId === studentId);
+    return ok(c, studentEnrollments);
+  });
+  app.post('/api/quiz/submit', async (c) => {
+    const tenantId = c.get('tenantId');
+    const { quizId, studentId, score } = (await c.req.json()) as { quizId: string; studentId: string; score: number };
+    if (!isStr(quizId) || !isStr(studentId) || typeof score !== 'number') {
+      return bad(c, 'quizId, studentId, and score are required');
+    }
+    const submissionId = `${studentId}-${quizId}`;
+    const newSubmission: QuizSubmission = {
+      id: submissionId,
+      tenantId,
+      quizId,
+      studentId,
+      score,
+      submittedAt: new Date().toISOString(),
+    };
+    const created = await QuizSubmissionEntity.create(c.env, tenantId, newSubmission);
+    return ok(c, created);
   });
   // ANALYTICS
   app.get('/api/analytics', async (c) => {
