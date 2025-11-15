@@ -3,22 +3,35 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
-
-// Minimal real-world chat example types (shared by frontend and worker)
+export type UserRole = 'admin' | 'teacher' | 'student';
 export interface User {
   id: string;
   name: string;
+  role: UserRole;
+  avatarUrl?: string;
 }
-
-export interface Chat {
+export interface Course {
   id: string;
   title: string;
+  description: string;
+  teacherId: string;
+  imageUrl?: string;
 }
-
-export interface ChatMessage {
+export interface Lesson {
   id: string;
-  chatId: string;
-  userId: string;
+  courseId: string;
+  title: string;
+  content: string; // Can be markdown or JSON for a block editor
+}
+export interface Quiz {
+  id: string;
+  lessonId: string;
+  title: string;
+  questions: QuizQuestion[];
+}
+export interface QuizQuestion {
+  id: string;
   text: string;
-  ts: number; // epoch millis
+  options: string[];
+  correctAnswer: number; // index of the correct option
 }

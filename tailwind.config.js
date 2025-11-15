@@ -14,10 +14,8 @@ export default {
   				'sans-serif'
   			],
   			display: [
-  				'Cal Sans',
-  				'Inter',
-  				'system-ui',
-  				'sans-serif'
+          'Playfair Display',
+          'serif'
   			],
   			mono: [
   				'JetBrains Mono',
@@ -123,6 +121,10 @@ export default {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
   			},
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))'
+        },
   			input: 'hsl(var(--input))',
   			chart: {
   				'1': 'hsl(var(--chart-1))',

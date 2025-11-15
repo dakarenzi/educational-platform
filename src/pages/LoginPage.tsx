@@ -1,204 +1,91 @@
+import { BookOpen, GraduationCap, UserCog } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
-import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { authActions, useAuthStore } from '@/store/auth';
-import { api } from '@/lib/api-client';
-import type { LoginResponse } from '@shared/types';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { LanguageToggle } from '@/components/LanguageToggle';
-const loginSchema = z.object({
-  email: z.string().email('Invalid email address.'),
-  password: z.string().min(1, 'Password is required.'),
-});
-const registerSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters.'),
-  email: z.string().email('Invalid email address.'),
-  password: z.string().min(8, 'Password must be at least 8 characters.'),
-  role: z.enum(['student', 'teacher', 'admin', 'super-admin']).default('student'),
-});
-type LoginFormValues = z.infer<typeof loginSchema>;
-type RegisterFormValues = z.infer<typeof registerSchema>;
-function LoginForm() {
+import { useAuthStore } from '@/store/auth';
+import type { UserRole } from '@shared/types';
+const roleData = {
+  student: {
+    icon: GraduationCap,
+    title: 'Student',
+    description: 'Access courses, take quizzes, and track your progress.',
+  },
+  teacher: {
+    icon: BookOpen,
+    title: 'Teacher',
+    description: 'Create courses, manage lessons, and view analytics.',
+  },
+  admin: {
+    icon: UserCog,
+    title: 'Admin',
+    description: 'Manage the platform, users, and institutional settings.',
+  },
+};
+export default function LoginPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
-  const loginForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema) as any,
-    defaultValues: { email: '', password: '' },
-  });
-  const registerForm = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema) as any,
-    defaultValues: { name: '', email: '', password: '', role: 'student' },
-  });
-  const loginMutation = useMutation({
-    mutationFn: (data: LoginFormValues) => api<LoginResponse>('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-    onSuccess: (data) => {
-      authActions.login(data.user, data.token);
-      toast.success(`Welcome back, ${data.user.name}!`);
-      if (data.user.role === 'super-admin') {
-        navigate('/app/super-admin');
-      } else if (data.user.role === 'teacher') {
-        navigate('/app/teacher/dashboard');
-      } else {
-        navigate('/app/dashboard');
-      }
-    },
-    onError: (err) => {
-      console.error('Login error:', err);
-      toast.error(err instanceof Error ? err.message : 'Login failed.');
-    },
-  });
-  const registerMutation = useMutation({
-    mutationFn: (data: RegisterFormValues) => api<LoginResponse>('/api/auth/register', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-    onSuccess: (data) => {
-      authActions.login(data.user, data.token);
-      toast.success(`Welcome, ${data.user.name}! Your account has been created.`);
-      if (data.user.role === 'super-admin') {
-        navigate('/app/super-admin');
-      } else if (data.user.role === 'teacher') {
-        navigate('/app/teacher/dashboard');
-      } else {
-        navigate('/app/dashboard');
-      }
-    },
-    onError: (err) => {
-      console.error('Registration error:', err);
-      toast.error(err instanceof Error ? err.message : 'Registration failed.');
-    },
-  });
+  const login = useAuthStore(s => s.login);
+  const handleLogin = (role: UserRole) => {
+    // In a real app, this would involve an API call. Here we mock it.
+    const mockUser = {
+      id: `user-${role}-1`,
+      name: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
+      role: role,
+    };
+    login(mockUser);
+    navigate('/app/dashboard');
+  };
   return (
-    <>
-      <div className="text-center mb-12">
+    <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      <ThemeToggle className="absolute top-6 right-6" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(217,216,255,0.5),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(38,38,97,0.6),rgba(10,10,20,0))] -z-10" />
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="text-center mb-12"
+      >
         <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground">
-          {t('welcome')}
+          Welcome to AcademiCloud
         </h1>
         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
           The illustrative educational platform to create, manage, and deliver engaging online learning experiences.
         </p>
-      </div>
-      <Tabs defaultValue="login" className="w-full max-w-md mx-auto">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">{t('login')}</TabsTrigger>
-          <TabsTrigger value="register">{t('register')}</TabsTrigger>
-        </TabsList>
-        <TabsContent value="login">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('login')}</CardTitle>
-              <CardDescription>Enter your credentials to access your account.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
-                  <FormField control={loginForm.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>{t('email')}</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={loginForm.control} name="password" render={({ field }) => (
-                    <FormItem><FormLabel>{t('password')}</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                    {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {t('login')}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="register">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('register')}</CardTitle>
-              <CardDescription>Create a new account.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} className="space-y-4">
-                  <FormField control={registerForm.control} name="name" render={({ field }) => (
-                    <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={registerForm.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>{t('email')}</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={registerForm.control} name="password" render={({ field }) => (
-                    <FormItem><FormLabel>{t('password')}</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                   <FormField
-                    control={registerForm.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Role</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={registerMutation.isPending}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a role" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="student">{t('student')}</SelectItem>
-                            <SelectItem value="teacher">{t('teacher')}</SelectItem>
-                            <SelectItem value="admin">{t('admin')}</SelectItem>
-                            <SelectItem value="super-admin">{t('super-admin')}</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                    {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    {t('createAccount')}
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </>
-  );
-}
-export default function LoginPage() {
-  const isAuthInitialized = useAuthStore(s => s.isInitialized);
-  const { i18n } = useTranslation();
-  if (!i18n.isInitialized || !isAuthInitialized) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  return (
-    <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-6 right-6 flex items-center gap-2">
-        <LanguageToggle />
-        <ThemeToggle className="relative top-0 right-0" />
-      </div>
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(217,216,255,0.5),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(38,38,97,0.6),rgba(10,10,20,0))] -z-10" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="py-8 md:py-10 lg:py-12">
-          <LoginForm />
-        </div>
-      </div>
+      </motion.div>
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <Card className="w-full max-w-md mx-auto shadow-xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Select Your Role</CardTitle>
+            <CardDescription>Choose how you'd like to sign in.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {(['student', 'teacher', 'admin'] as UserRole[]).map((role) => {
+              const Icon = roleData[role].icon;
+              return (
+                <Button
+                  key={role}
+                  onClick={() => handleLogin(role)}
+                  className="w-full h-auto py-4 justify-start text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
+                  variant="outline"
+                >
+                  <Icon className="w-8 h-8 mr-4 text-primary" />
+                  <div>
+                    <p className="font-semibold text-base">{roleData[role].title}</p>
+                    <p className="text-sm text-muted-foreground">{roleData[role].description}</p>
+                  </div>
+                </Button>
+              );
+            })}
+          </CardContent>
+        </Card>
+      </motion.div>
       <footer className="absolute bottom-6 text-center text-muted-foreground/80 text-sm">
-        <p>Built with ❤️ at Cloudflare</p>
+        <p>Built with ❤�� at Cloudflare</p>
       </footer>
     </div>
   );
