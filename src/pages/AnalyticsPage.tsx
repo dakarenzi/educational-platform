@@ -2,11 +2,19 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { motion } from 'framer-motion';
 import { Users, BookOpen, Target, Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
+import { formatDistanceToNow } from 'date-fns';
 import { api } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+interface RecentActivity {
+  student: string;
+  course: string;
+  activity: string;
+  score: string;
+  submittedAt: string;
+}
 interface AnalyticsData {
   kpi: {
     totalStudents: number;
@@ -15,7 +23,7 @@ interface AnalyticsData {
     completionRate: number;
   };
   progressData: { name: string; progress: number }[];
-  recentActivity: { student: string; course: string; activity: string; score: string; time: string }[];
+  recentActivity: RecentActivity[];
 }
 const fetchAnalytics = async (): Promise<AnalyticsData> => {
   return api<AnalyticsData>('/api/analytics');
@@ -116,11 +124,13 @@ export default function AnalyticsPage() {
                           <TableRow key={index}>
                             <TableCell className="font-medium">{activity.student}</TableCell>
                             <TableCell>
-                              <Badge variant={activity.activity.includes('Failed') ? 'destructive' : 'secondary'}>
+                              <Badge variant={activity.activity.includes('Failed') ? 'destructive' : 'success'}>
                                 {activity.activity}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-right text-muted-foreground">{activity.time}</TableCell>
+                            <TableCell className="text-right text-muted-foreground text-sm">
+                              {formatDistanceToNow(new Date(activity.submittedAt), { addSuffix: true })}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

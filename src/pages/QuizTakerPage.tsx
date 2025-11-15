@@ -50,7 +50,7 @@ export default function QuizTakerPage() {
     if (isFinished && quizId && user) {
       submitQuizMutation.mutate({ quizId, studentId: user.id, score: percentage });
     }
-  }, [isFinished, quizId, user, percentage]);
+  }, [isFinished, quizId, user, percentage, submitQuizMutation]);
   if (isLoading) return <div className="max-w-2xl mx-auto p-8"><Skeleton className="h-96 w-full" /></div>;
   if (error) return <div className="text-center p-8 text-destructive">Failed to load quiz.</div>;
   if (!quiz) return null;

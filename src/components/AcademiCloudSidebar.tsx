@@ -8,6 +8,7 @@ import {
   Presentation,
   Sparkles,
   PenSquare,
+  ClipboardCheck,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -25,7 +26,10 @@ const navItems = [
   { to: '/app/courses', icon: Book, label: 'Courses' },
   { to: '/app/flashcards', icon: Presentation, label: 'Flashcards' },
   { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
-  { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics' },
+  { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
+];
+const studentNavItems = [
+    { to: '/app/my-progress', icon: ClipboardCheck, label: 'My Progress' },
 ];
 const teacherNavItems = [
     { to: '/app/teacher/dashboard', icon: PenSquare, label: 'Teacher Tools' },
@@ -49,6 +53,8 @@ export function AcademiCloudSidebar() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
   const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
+  const isStudent = user?.role === 'student';
+  const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includes(user!.role));
   return (
     <aside className="hidden md:flex flex-col w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="p-4 border-b border-sidebar-border flex items-center gap-3">
@@ -61,7 +67,7 @@ export function AcademiCloudSidebar() {
       </div>
       <nav className="flex-1 px-2 py-4 space-y-1">
         <TooltipProvider>
-          {navItems.map((item) => (
+          {visibleNavItems.map((item) => (
             <Tooltip key={item.label}>
               <TooltipTrigger asChild>
                 <NavLink
@@ -82,6 +88,32 @@ export function AcademiCloudSidebar() {
               </TooltipContent>
             </Tooltip>
           ))}
+          {isStudent && (
+             <>
+              <Separator className="my-2 bg-sidebar-border" />
+              {studentNavItems.map((item) => (
+                <Tooltip key={item.label}>
+                  <TooltipTrigger asChild>
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                          isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground'
+                        )
+                      }
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </>
+          )}
           {isTeacherOrAdmin && (
             <>
               <Separator className="my-2 bg-sidebar-border" />

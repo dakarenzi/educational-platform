@@ -2,7 +2,7 @@ import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
 import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -265,6 +265,32 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
     const created = await QuizSubmissionEntity.create(c.env, tenantId, newSubmission);
     return ok(c, created);
   });
+  app.get('/api/student/submissions', async (c) => {
+    const tenantId = c.get('tenantId');
+    const studentId = c.req.query('studentId');
+    if (!isStr(studentId)) {
+      return bad(c, 'studentId is required');
+    }
+    const allSubmissions = (await QuizSubmissionEntity.list(c.env, tenantId)).items.filter(s => s.studentId === studentId);
+    const allQuizzes = (await QuizEntity.list(c.env, tenantId)).items;
+    const allLessons = (await LessonEntity.list(c.env, tenantId)).items;
+    const allCourses = (await CourseEntity.list(c.env, tenantId)).items;
+    const quizMap = new Map(allQuizzes.map(q => [q.id, q]));
+    const lessonMap = new Map(allLessons.map(l => [l.id, l]));
+    const courseMap = new Map(allCourses.map(c => [c.id, c]));
+    const enrichedSubmissions = allSubmissions.map(sub => {
+      const quiz = quizMap.get(sub.quizId);
+      const lesson = quiz ? lessonMap.get(quiz.lessonId) : undefined;
+      const course = lesson ? courseMap.get(lesson.courseId) : undefined;
+      return {
+        ...sub,
+        quizTitle: quiz?.title || 'Unknown Quiz',
+        courseTitle: course?.title || 'Unknown Course',
+        courseId: course?.id || '',
+      };
+    }).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    return ok(c, enrichedSubmissions);
+  });
   // ANALYTICS
   app.get('/api/analytics', async (c) => {
     const tenantId = c.get('tenantId');
@@ -272,26 +298,46 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
     await CourseEntity.ensureSeed(c.env, tenantId);
     const users = await UserEntity.list(c.env, tenantId);
     const courses = await CourseEntity.list(c.env, tenantId);
+    const submissions = (await QuizSubmissionEntity.list(c.env, tenantId)).items;
     const totalStudents = users.items.filter(u => u.role === 'student').length;
     const totalCourses = courses.items.length;
+    const avgScore = submissions.length > 0 ? Math.round(submissions.reduce((acc, s) => acc + s.score, 0) / submissions.length) : 0;
+    const userMap = new Map<string, User>(users.items.map(u => [u.id, u]));
+    const allQuizzes = (await QuizEntity.list(c.env, tenantId)).items;
+    const allLessons = (await LessonEntity.list(c.env, tenantId)).items;
+    const quizMap = new Map(allQuizzes.map(q => [q.id, q]));
+    const lessonMap = new Map(allLessons.map(l => [l.id, l]));
+    const courseMap = new Map(courses.items.map(c => [c.id, c]));
+    const recentActivity = submissions
+      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+      .slice(0, 5)
+      .map(sub => {
+        const student = userMap.get(sub.studentId);
+        const quiz = quizMap.get(sub.quizId);
+        const lesson = quiz ? lessonMap.get(quiz.lessonId) : undefined;
+        const course = lesson ? courseMap.get(lesson.courseId) : undefined;
+        return {
+          student: student?.name || 'Unknown Student',
+          course: course?.title || 'Unknown Course',
+          activity: sub.score >= 80 ? 'Quiz Passed' : 'Quiz Failed',
+          score: `${sub.score}%`,
+          submittedAt: sub.submittedAt,
+        };
+      });
     const mockProgressData = [
       { name: 'Paleontology', progress: 85 },
       { name: 'Web Dev', progress: 92 },
       { name: 'Writing', progress: 72 },
     ];
-    const mockRecentActivity = [
-      { student: 'Sam Neill', course: 'Paleontology', activity: 'Quiz Passed', score: '95%', time: '2m ago' },
-      { student: 'Laura Dern', course: 'Web Dev', activity: 'Lesson Completed', score: '-', time: '15m ago' },
-    ];
     const analyticsData = {
       kpi: {
         totalStudents,
         activeCourses: totalCourses,
-        avgScore: 88,
-        completionRate: 76,
+        avgScore,
+        completionRate: 76, // This remains mock for now
       },
       progressData: mockProgressData,
-      recentActivity: mockRecentActivity,
+      recentActivity,
     };
     return ok(c, analyticsData);
   });
