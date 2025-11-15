@@ -27,6 +27,7 @@ import QuizTakerPage from '@/pages/QuizTakerPage';
 // Teacher Tools
 import { TeacherLayout } from '@/components/layout/TeacherLayout';
 import TeacherDashboardPage from '@/pages/teacher/TeacherDashboardPage';
+import TeacherCoursesPage from '@/pages/teacher/TeacherCoursesPage';
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -55,6 +56,7 @@ const router = createBrowserRouter([
           children: [
             { index: true, element: <Navigate to="/app/teacher/dashboard" replace /> },
             { path: "dashboard", element: <TeacherDashboardPage /> },
+            { path: "courses", element: <TeacherCoursesPage /> },
           ]
         }
     ]
