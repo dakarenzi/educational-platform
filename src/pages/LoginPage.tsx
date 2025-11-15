@@ -73,8 +73,8 @@ export default function LoginPage() {
                   className="w-full h-auto py-4 justify-start text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:bg-primary/10"
                   variant="outline"
                 >
-                  <Icon className="w-8 h-8 mr-4 text-primary" />
-                  <div>
+                  <Icon className="w-8 h-8 mr-4 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
                     <p className="font-semibold text-base">{roleData[role].title}</p>
                     <p className="text-sm text-muted-foreground">{roleData[role].description}</p>
                   </div>
@@ -85,7 +85,7 @@ export default function LoginPage() {
         </Card>
       </motion.div>
       <footer className="absolute bottom-6 text-center text-muted-foreground/80 text-sm">
-        <p>Built with ❤️ at Cloudflare</p>
+        <p>Built with ���️ at Cloudflare</p>
       </footer>
     </div>
   );
