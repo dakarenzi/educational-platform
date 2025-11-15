@@ -77,13 +77,7 @@ function updateWranglerJsonc() {
 }
 
 function runSetupCommands() {
-    const commands = [
-    "bun install react-dom-confetti",
-    "bun install uuid",
-    "bun install i18next react-i18next i18next-browser-languagedetector",
-    "bun install stripe @types/stripe",
-    "bun install @radix-ui/react-label"
-];
+    const commands = [];
     
     if (commands.length === 0) {
         console.log('⊘ No setup commands to run');
