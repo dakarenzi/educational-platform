@@ -3,7 +3,7 @@ import type { Env } from './core-utils';
 import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
 import type { Course, Lesson, Quiz, FlashcardDeck } from "@shared/types";
-type AppContext = {
+export type AppContext = {
   Variables: {
     tenantId: string;
   };
@@ -75,6 +75,17 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
       }));
     const courseWithLessons: Course = { ...course, lessons: courseLessons };
     return ok(c, courseWithLessons);
+  });
+  // TEACHER-SPECIFIC ROUTES
+  app.get('/api/teacher/courses', async (c) => {
+    const tenantId = c.get('tenantId');
+    // In a real app, you'd get the user ID from the auth context.
+    // Here we mock it to be the teacher from our seed data.
+    const teacherId = 'user-teacher-1';
+    await CourseEntity.ensureSeed(c.env, tenantId);
+    const allCourses = await CourseEntity.list(c.env, tenantId);
+    const teacherCourses = allCourses.items.filter(course => course.teacherId === teacherId);
+    return ok(c, teacherCourses);
   });
   // LESSONS
   app.post('/api/lessons', async (c) => {
