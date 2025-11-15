@@ -19,6 +19,7 @@ import DashboardPage from '@/pages/HomePage';
 import CoursesPage from '@/pages/CoursesPage';
 import CourseDetailPage from '@/pages/CourseDetailPage';
 import FlashcardsPage from '@/pages/FlashcardsPage';
+import FlashcardDeckPage from '@/pages/FlashcardDeckPage';
 import TutorPage from '@/pages/TutorPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import QuizCreatorPage from '@/pages/QuizCreatorPage';
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
         { path: "lesson/:lessonId/quiz", element: <QuizCreatorPage /> },
         { path: "quiz/:quizId", element: <QuizTakerPage /> },
         { path: "flashcards", element: <FlashcardsPage /> },
+        { path: "flashcards/:deckId", element: <FlashcardDeckPage /> },
         { path: "tutor", element: <TutorPage /> },
         { path: "analytics", element: <AnalyticsPage /> },
     ]
