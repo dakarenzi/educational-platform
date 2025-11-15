@@ -341,4 +341,27 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
     };
     return ok(c, analyticsData);
   });
+  // AI TUTOR
+  const tutorHandler = async (c: Context, mockResponses: { en: string; fr: string }) => {
+    const { language = 'en' } = (await c.req.json()) as { content: string; language: 'en' | 'fr' };
+    await new Promise(res => setTimeout(res, 1000)); // Simulate AI processing time
+    const response = language === 'fr' ? mockResponses.fr : mockResponses.en;
+    return ok(c, { response });
+  };
+  app.post('/api/tutor/message', (c) => tutorHandler(c, {
+    en: "That's a great question! Let me look into that for you. (This is a mocked response)",
+    fr: "C'est une excellente question ! Laissez-moi vérifier cela pour vous. (Ceci est une réponse simulée)"
+  }));
+  app.post('/api/tutor/summarize', (c) => tutorHandler(c, {
+    en: "In summary, the key points are A, B, and C. (This is a mocked summary)",
+    fr: "En résumé, les points clés sont A, B et C. (Ceci est un résumé simulé)"
+  }));
+  app.post('/api/tutor/explain', (c) => tutorHandler(c, {
+    en: "Let's break it down. The concept works like this... (This is a mocked explanation)",
+    fr: "Décortiquons cela. Le concept fonctionne comme ceci... (Ceci est une explication simulée)"
+  }));
+  app.post('/api/tutor/quiz-me', (c) => tutorHandler(c, {
+    en: "Okay, here's a practice question for you: What is the main benefit of using serverless architecture? (This is a mocked quiz question)",
+    fr: "D'accord, voici une question pratique pour vous : Quel est le principal avantage de l'utilisation d'une architecture sans serveur ? (Ceci est une question de quiz simulée)"
+  }));
 }
