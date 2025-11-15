@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, SendHoriz } from 'lucide-react';
+import { Sparkles, Send } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -107,7 +107,7 @@ export default function TutorPage() {
                 autoComplete="off"
               />
               <Button type="submit" size="icon" disabled={!input.trim()}>
-                <SendHoriz className="h-5 w-5" />
+                <Send className="h-5 w-5" />
               </Button>
             </form>
           </div>

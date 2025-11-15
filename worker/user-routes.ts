@@ -126,4 +126,34 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await deckEntity.save(deckData);
     return ok(c, deckData);
   });
+  // ANALYTICS
+  app.get('/api/analytics', async (c) => {
+    await UserEntity.ensureSeed(c.env);
+    await CourseEntity.ensureSeed(c.env);
+    const users = await UserEntity.list(c.env);
+    const courses = await CourseEntity.list(c.env);
+    const totalStudents = users.items.filter(u => u.role === 'student').length;
+    const totalCourses = courses.items.length;
+    // Mocking other data for a complete dashboard experience
+    const mockProgressData = [
+      { name: 'Paleontology', progress: 85 },
+      { name: 'Web Dev', progress: 92 },
+      { name: 'Writing', progress: 72 },
+    ];
+    const mockRecentActivity = [
+      { student: 'Sam Neill', course: 'Paleontology', activity: 'Quiz Passed', score: '95%', time: '2m ago' },
+      { student: 'Laura Dern', course: 'Web Dev', activity: 'Lesson Completed', score: '-', time: '15m ago' },
+    ];
+    const analyticsData = {
+      kpi: {
+        totalStudents,
+        activeCourses: totalCourses,
+        avgScore: 88, // Mocked
+        completionRate: 76, // Mocked
+      },
+      progressData: mockProgressData,
+      recentActivity: mockRecentActivity,
+    };
+    return ok(c, analyticsData);
+  });
 }
