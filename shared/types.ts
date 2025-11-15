@@ -16,6 +16,7 @@ export interface Course {
   description: string;
   teacherId: string;
   imageUrl?: string;
+  lessons?: Lesson[];
 }
 export interface Lesson {
   id: string;
