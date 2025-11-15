@@ -28,7 +28,7 @@ export default function CourseDetailPage() {
     enabled: !!courseId,
   });
   const addLessonMutation = useMutation({
-    mutationFn: (newLesson: Omit<Lesson, 'id'>) => api<Lesson>('/api/lessons', {
+    mutationFn: (newLesson: Omit<Lesson, 'id' | 'tenantId'> & { tenantId: string }) => api<Lesson>('/api/lessons', {
       method: 'POST',
       body: JSON.stringify(newLesson),
     }),
@@ -43,7 +43,7 @@ export default function CourseDetailPage() {
   });
   const handleAddLesson = (values: { title: string; content: string }) => {
     if (!courseId) return;
-    addLessonMutation.mutate({ ...values, courseId });
+    addLessonMutation.mutate({ ...values, courseId, tenantId: 'inst-1' });
   };
   const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
   if (isLoading) {

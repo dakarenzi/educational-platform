@@ -24,6 +24,9 @@ import TutorPage from '@/pages/TutorPage';
 import AnalyticsPage from '@/pages/AnalyticsPage';
 import QuizCreatorPage from '@/pages/QuizCreatorPage';
 import QuizTakerPage from '@/pages/QuizTakerPage';
+// Teacher Tools
+import { TeacherLayout } from '@/components/layout/TeacherLayout';
+import TeacherDashboardPage from '@/pages/teacher/TeacherDashboardPage';
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -46,6 +49,14 @@ const router = createBrowserRouter([
         { path: "flashcards/:deckId", element: <FlashcardDeckPage /> },
         { path: "tutor", element: <TutorPage /> },
         { path: "analytics", element: <AnalyticsPage /> },
+        {
+          path: "teacher",
+          element: <TeacherLayout />,
+          children: [
+            { index: true, element: <Navigate to="/app/teacher/dashboard" replace /> },
+            { path: "dashboard", element: <TeacherDashboardPage /> },
+          ]
+        }
     ]
   },
 ]);

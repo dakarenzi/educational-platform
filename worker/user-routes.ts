@@ -1,11 +1,16 @@
-import { Hono } from "hono";
+import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
 import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
 import type { Course, Lesson, Quiz, FlashcardDeck } from "@shared/types";
-export function userRoutes(app: Hono<{ Bindings: Env }>) {
+type AppContext = {
+  Variables: {
+    tenantId: string;
+  };
+};
+export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
   // Middleware to simulate a single tenant context
-  const tenantMiddleware = async (c, next) => {
+  const tenantMiddleware = async (c: Context<AppContext>, next: Next) => {
     c.set('tenantId', 'inst-1'); // Hardcoded for now
     await next();
   };

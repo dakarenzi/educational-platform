@@ -24,7 +24,7 @@ export default function FlashcardsPage() {
     queryFn: fetchDecks,
   });
   const createDeckMutation = useMutation({
-    mutationFn: (newDeck: Omit<FlashcardDeck, 'id' | 'cards'>) => api<FlashcardDeck>('/api/flashcard-decks', {
+    mutationFn: (newDeck: Omit<FlashcardDeck, 'id' | 'cards' | 'tenantId'> & { tenantId: string }) => api<FlashcardDeck>('/api/flashcard-decks', {
       method: 'POST',
       body: JSON.stringify(newDeck),
     }),
@@ -42,7 +42,7 @@ export default function FlashcardsPage() {
       toast.error('You must be logged in to create a deck.');
       return;
     }
-    createDeckMutation.mutate({ ...values, userId: user.id });
+    createDeckMutation.mutate({ ...values, userId: user.id, tenantId: 'inst-1' });
   };
   const containerVariants = {
     hidden: { opacity: 0 },

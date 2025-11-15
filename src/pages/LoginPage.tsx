@@ -30,6 +30,7 @@ export default function LoginPage() {
     // In a real app, this would involve an API call. Here we mock it.
     const mockUser = {
       id: `user-${role}-1`,
+      tenantId: 'inst-1', // Add tenantId to satisfy the User type
       name: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
       role: role,
     };
@@ -85,7 +86,7 @@ export default function LoginPage() {
         </Card>
       </motion.div>
       <footer className="absolute bottom-6 text-center text-muted-foreground/80 text-sm">
-        <p>Built with ���️ at Cloudflare</p>
+        <p>Built with ❤️ at Cloudflare</p>
       </footer>
     </div>
   );

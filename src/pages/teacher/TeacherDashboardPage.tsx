@@ -1,39 +1,27 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { PlusCircle, Book, Presentation, ClipboardList, FileText, CheckSquare } from 'lucide-react';
+import { PlusCircle, Book, Presentation, ClipboardList } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
 const teacherActions = [
   {
-    title: 'Manage Your Courses',
-    description: 'Edit existing courses and add new lessons or quizzes.',
-    href: '/app/teacher/courses',
+    title: 'Create a New Course',
+    description: 'Start building a new course with lessons and quizzes.',
+    href: '/app/courses',
     icon: Book,
   },
   {
-    title: 'Manage Quizzes',
-    description: 'View all quizzes you have created for your lessons.',
-    href: '/app/teacher/quizzes',
-    icon: CheckSquare,
-  },
-  {
-    title: 'Manage Flashcard Decks',
-    description: 'Create and edit flashcard decks for your students.',
-    href: '/app/teacher/flashcards',
+    title: 'Create a Flashcard Deck',
+    description: 'Build a new set of flashcards for students to study.',
+    href: '/app/flashcards',
     icon: Presentation,
   },
   {
-    title: 'Manage Mock Exams',
-    description: 'Build and review practice exams for test preparation.',
-    href: '/app/teacher/mock-exams',
+    title: 'View Analytics',
+    description: 'Track student progress and course engagement.',
+    href: '/app/analytics',
     icon: ClipboardList,
-  },
-  {
-    title: 'Manage Resources',
-    description: 'Upload and organize documents, images, and other materials.',
-    href: '/app/teacher/resources',
-    icon: FileText,
   },
 ];
 export default function TeacherDashboardPage() {
