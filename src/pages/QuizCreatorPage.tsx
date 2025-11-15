@@ -13,7 +13,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 const questionSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   text: z.string().min(5, 'Question text must be at least 5 characters.'),
   options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
   correctAnswer: z.preprocess(
@@ -34,7 +34,7 @@ export default function QuizCreatorPage() {
     resolver: zodResolver(quizFormSchema),
     defaultValues: {
       title: '',
-      questions: [{ text: '', options: ['', '', '', ''], correctAnswer: 0 }],
+      questions: [{ id: crypto.randomUUID(), text: '', options: ['', '', '', ''], correctAnswer: 0 }],
     },
   });
   const { fields, append, remove } = useFieldArray({
@@ -142,7 +142,7 @@ export default function QuizCreatorPage() {
               </Card>
             ))}
             <div className="flex justify-between items-center">
-              <Button type="button" variant="outline" onClick={() => append({ text: '', options: ['', '', '', ''], correctAnswer: 0 })}>
+              <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), text: '', options: ['', '', '', ''], correctAnswer: 0 })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Question
               </Button>
               <Button type="submit" size="lg" disabled={createQuizMutation.isPending}>
