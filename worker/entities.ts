@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Course, Lesson } from "@shared/types";
+import type { User, Course, Lesson, Quiz } from "@shared/types";
 const MOCK_USERS: User[] = [
   { id: 'user-admin-1', name: 'Dr. Evelyn Reed', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin1' },
   { id: 'user-teacher-1', name: 'Prof. Alan Grant', role: 'teacher', avatarUrl: 'https://i.pravatar.cc/150?u=teacher1' },
@@ -16,6 +16,17 @@ const MOCK_LESSONS: Lesson[] = [
     { id: 'lesson-1-2', courseId: 'course-1', title: 'Fossil Hunting 101', content: 'Techniques for finding and identifying fossils.' },
     { id: 'lesson-2-1', courseId: 'course-2', title: 'Building with Hono', content: 'Creating serverless APIs on Cloudflare Workers.' },
     { id: 'lesson-2-2', courseId: 'course-2', title: 'React on the Edge', content: 'Understanding frontend frameworks in a serverless world.' },
+];
+const MOCK_QUIZZES: Quiz[] = [
+    {
+        id: 'quiz-1-1',
+        lessonId: 'lesson-1-1',
+        title: 'Mesozoic Era Checkpoint',
+        questions: [
+            { id: 'q1', text: 'Which period is NOT part of the Mesozoic Era?', options: ['Triassic', 'Jurassic', 'Cretaceous', 'Paleozoic'], correctAnswer: 3 },
+            { id: 'q2', text: 'What is the defining feature of the Cretaceous period?', options: ['First dinosaurs', 'Rise of mammals', 'Widespread chalk deposits', 'Pangaea formation'], correctAnswer: 2 },
+        ]
+    }
 ];
 // USER ENTITY
 export class UserEntity extends IndexedEntity<User> {
@@ -37,4 +48,11 @@ export class LessonEntity extends IndexedEntity<Lesson> {
   static readonly indexName = "lessons";
   static readonly initialState: Lesson = { id: "", courseId: "", title: "", content: "" };
   static seedData = MOCK_LESSONS;
+}
+// QUIZ ENTITY
+export class QuizEntity extends IndexedEntity<Quiz> {
+  static readonly entityName = "quiz";
+  static readonly indexName = "quizzes";
+  static readonly initialState: Quiz = { id: "", lessonId: "", title: "", questions: [] };
+  static seedData = MOCK_QUIZZES;
 }

@@ -23,16 +23,17 @@ export interface Lesson {
   courseId: string;
   title: string;
   content: string; // Can be markdown or JSON for a block editor
-}
-export interface Quiz {
-  id: string;
-  lessonId: string;
-  title: string;
-  questions: QuizQuestion[];
+  quiz?: Quiz;
 }
 export interface QuizQuestion {
   id: string;
   text: string;
   options: string[];
   correctAnswer: number; // index of the correct option
+}
+export interface Quiz {
+  id: string;
+  lessonId: string;
+  title: string;
+  questions: QuizQuestion[];
 }

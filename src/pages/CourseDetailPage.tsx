@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, BookOpen, PlusCircle } from 'lucide-react';
+import { ArrowLeft, BookOpen, PlusCircle, FilePenLine, ClipboardCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { LessonForm } from '@/components/forms/LessonForm';
+import { Separator } from '@/components/ui/separator';
 const fetchCourse = async (courseId: string): Promise<Course> => {
   return api<Course>(`/api/courses/${courseId}`);
 };
@@ -129,8 +130,29 @@ export default function CourseDetailPage() {
                             <span className="text-left">{lesson.title}</span>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pl-12">
-                          {lesson.content}
+                        <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pl-12 space-y-4">
+                          <p>{lesson.content}</p>
+                          <Separator />
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-semibold text-foreground">Quiz</h4>
+                            {lesson.quiz ? (
+                                isTeacherOrAdmin ? (
+                                    <Button asChild size="sm" variant="secondary">
+                                        <Link to={`/app/lesson/${lesson.id}/quiz`}><FilePenLine className="mr-2 h-4 w-4" />Edit Quiz</Link>
+                                    </Button>
+                                ) : (
+                                    <Button asChild size="sm">
+                                        <Link to={`/app/quiz/${lesson.quiz.id}`}><ClipboardCheck className="mr-2 h-4 w-4" />Take Quiz</Link>
+                                    </Button>
+                                )
+                            ) : isTeacherOrAdmin ? (
+                                <Button asChild size="sm" variant="outline">
+                                    <Link to={`/app/lesson/${lesson.id}/quiz`}><PlusCircle className="mr-2 h-4 w-4" />Add Quiz</Link>
+                                </Button>
+                            ) : (
+                                <p className="text-xs text-muted-foreground">No quiz available.</p>
+                            )}
+                          </div>
                         </AccordionContent>
                       </AccordionItem>
                     ))}
