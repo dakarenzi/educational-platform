@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Course, Lesson, Quiz } from "@shared/types";
+import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard } from "@shared/types";
 const MOCK_USERS: User[] = [
   { id: 'user-admin-1', name: 'Dr. Evelyn Reed', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin1' },
   { id: 'user-teacher-1', name: 'Prof. Alan Grant', role: 'teacher', avatarUrl: 'https://i.pravatar.cc/150?u=teacher1' },
@@ -25,6 +25,29 @@ const MOCK_QUIZZES: Quiz[] = [
         questions: [
             { id: 'q1', text: 'Which period is NOT part of the Mesozoic Era?', options: ['Triassic', 'Jurassic', 'Cretaceous', 'Paleozoic'], correctAnswer: 3 },
             { id: 'q2', text: 'What is the defining feature of the Cretaceous period?', options: ['First dinosaurs', 'Rise of mammals', 'Widespread chalk deposits', 'Pangaea formation'], correctAnswer: 2 },
+        ]
+    }
+];
+const MOCK_FLASHCARD_DECKS: FlashcardDeck[] = [
+    {
+        id: 'deck-1',
+        title: 'Cloudflare Terminology',
+        description: 'Key terms and concepts for the Cloudflare ecosystem.',
+        userId: 'user-teacher-1',
+        cards: [
+            { id: 'card-1-1', deckId: 'deck-1', question: 'What is a Worker?', answer: 'A serverless execution environment that allows you to create and deploy applications on Cloudflare\'s global network.' },
+            { id: 'card-1-2', deckId: 'deck-1', question: 'What is a Durable Object?', answer: 'A single-threaded, stateful object that provides strong consistency for applications running on Cloudflare Workers.' },
+            { id: 'card-1-3', deckId: 'deck-1', question: 'What is R2?', answer: 'Cloudflare\'s zero-egress fee object storage solution.' },
+        ]
+    },
+    {
+        id: 'deck-2',
+        title: 'React Hooks',
+        description: 'Commonly used hooks in React.',
+        userId: 'user-student-1',
+        cards: [
+            { id: 'card-2-1', deckId: 'deck-2', question: 'useState', answer: 'A hook that lets you add React state to function components.' },
+            { id: 'card-2-2', deckId: 'deck-2', question: 'useEffect', answer: 'A hook that lets you perform side effects in function components.' },
         ]
     }
 ];
@@ -55,4 +78,11 @@ export class QuizEntity extends IndexedEntity<Quiz> {
   static readonly indexName = "quizzes";
   static readonly initialState: Quiz = { id: "", lessonId: "", title: "", questions: [] };
   static seedData = MOCK_QUIZZES;
+}
+// FLASHCARD DECK ENTITY
+export class FlashcardDeckEntity extends IndexedEntity<FlashcardDeck> {
+  static readonly entityName = "flashcardDeck";
+  static readonly indexName = "flashcardDecks";
+  static readonly initialState: FlashcardDeck = { id: "", title: "", description: "", userId: "" };
+  static seedData = MOCK_FLASHCARD_DECKS;
 }

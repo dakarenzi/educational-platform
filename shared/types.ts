@@ -37,3 +37,16 @@ export interface Quiz {
   title: string;
   questions: QuizQuestion[];
 }
+export interface Flashcard {
+  id: string;
+  deckId: string;
+  question: string;
+  answer: string;
+}
+export interface FlashcardDeck {
+  id: string;
+  title: string;
+  description: string;
+  userId: string; // The user who created the deck
+  cards?: Flashcard[];
+}

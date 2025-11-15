@@ -6,14 +6,14 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
-import type { Quiz } from '@shared/types';
+import type { Quiz, QuizQuestion } from '@shared/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Separator } from '@/components/ui/separator';
 const questionSchema = z.object({
+  id: z.string().optional(),
   text: z.string().min(5, 'Question text must be at least 5 characters.'),
   options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
   correctAnswer: z.coerce.number().min(0).max(3),
@@ -43,7 +43,7 @@ export default function QuizCreatorPage() {
       method: 'POST',
       body: JSON.stringify(newQuiz),
     }),
-    onSuccess: (data) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course'] });
       toast.success('Quiz created successfully!');
       navigate(-1);
@@ -54,7 +54,8 @@ export default function QuizCreatorPage() {
   });
   const onSubmit = (values: QuizFormValues) => {
     if (!lessonId) return;
-    createQuizMutation.mutate({ ...values, lessonId });
+    // The form values align with QuizQuestion now, so we can cast safely.
+    createQuizMutation.mutate({ ...values, lessonId, questions: values.questions as QuizQuestion[] });
   };
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">

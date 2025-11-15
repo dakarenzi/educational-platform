@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, CourseEntity, LessonEntity, QuizEntity } from "./entities";
+import { UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck } from "@shared/types";
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   app.get('/api/test', (c) => c.json({ success: true, data: { name: 'AcademiCloud API' }}));
   // USERS
@@ -81,5 +81,31 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     const quiz = await quizEntity.getState();
     return ok(c, quiz);
+  });
+  // FLASHCARDS
+  app.get('/api/flashcard-decks', async (c) => {
+    await FlashcardDeckEntity.ensureSeed(c.env);
+    const page = await FlashcardDeckEntity.list(c.env);
+    // Return decks without cards for the list view
+    const decksWithoutCards = page.items.map(({ cards, ...deck }) => deck);
+    return ok(c, decksWithoutCards);
+  });
+  app.get('/api/flashcard-decks/:id', async (c) => {
+    const { id } = c.req.param();
+    const deckEntity = new FlashcardDeckEntity(c.env, id);
+    if (!(await deckEntity.exists())) {
+      return notFound(c, 'Flashcard deck not found');
+    }
+    const deck = await deckEntity.getState();
+    return ok(c, deck);
+  });
+  app.post('/api/flashcard-decks', async (c) => {
+    const { title, description, userId } = (await c.req.json()) as Partial<Omit<FlashcardDeck, 'id'>>;
+    if (!isStr(title) || !isStr(description) || !isStr(userId)) {
+        return bad(c, 'title, description, and userId are required');
+    }
+    const newDeck: FlashcardDeck = { id: crypto.randomUUID(), title, description, userId, cards: [] };
+    const created = await FlashcardDeckEntity.create(c.env, newDeck);
+    return ok(c, created);
   });
 }
