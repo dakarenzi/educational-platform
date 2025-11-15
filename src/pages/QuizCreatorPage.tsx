@@ -54,7 +54,6 @@ export default function QuizCreatorPage() {
   });
   const onSubmit = (values: QuizFormValues) => {
     if (!lessonId) return;
-    // The form values align with QuizQuestion now, so we can cast safely.
     createQuizMutation.mutate({ ...values, lessonId, questions: values.questions as QuizQuestion[] });
   };
   return (
