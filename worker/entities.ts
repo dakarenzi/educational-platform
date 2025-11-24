@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant } from "@shared/types";
+import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant, MockExam, MockExamSubmission } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
   { id: 'inst-1', name: 'Cloudflare University', country: 'USA', curriculum: 'US', languages: ['en'], adminEmail: 'contact@cfu.edu' },
   { id: 'inst-2', name: 'Workers Academy', country: 'France', curriculum: 'AEFE', languages: ['fr', 'en'], adminEmail: 'contact@workers.ac' },
@@ -119,4 +119,34 @@ export class PendingTenantEntity extends IndexedEntity<PendingTenant> {
   static readonly indexName = "pendingTenants";
   static readonly initialState: PendingTenant = { id: "", name: "", country: "", curriculum: "", languages: [], adminEmail: "", status: 'pending', requestedAt: "" };
   static seedData = MOCK_PENDING_TENANTS;
+}
+// MOCK EXAM ENTITY
+export class MockExamEntity extends IndexedEntity<MockExam> {
+  static readonly entityName = "mockExam";
+  static readonly indexName = "mockExams";
+  static readonly initialState: MockExam = {
+    id: "",
+    tenantId: "",
+    title: "",
+    teacherId: "",
+    duration: 60,
+    questions: [],
+    createdAt: ""
+  };
+  static seedData: MockExam[] = [];
+}
+
+// MOCK EXAM SUBMISSION ENTITY
+export class MockExamSubmissionEntity extends IndexedEntity<MockExamSubmission> {
+  static readonly entityName = "mockExamSubmission";
+  static readonly indexName = "mockExamSubmissions";
+  static readonly initialState: MockExamSubmission = {
+    id: "",
+    tenantId: "",
+    examId: "",
+    studentId: "",
+    score: 0,
+    timeTaken: 0,
+    submittedAt: ""
+  };
 }

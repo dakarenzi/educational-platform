@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/auth';
 const dashboardItems = [
   { title: 'Courses', href: '/app/courses', icon: Book, description: 'Manage and browse courses' },
-  { title: 'Quizzes', href: '/app/courses', icon: ClipboardList, description: 'Create and take quizzes' },
   { title: 'Flashcards', href: '/app/flashcards', icon: Presentation, description: 'Study with flashcard decks' },
   { title: 'AI Tutor', href: '/app/tutor', icon: Sparkles, description: 'Get help from an AI assistant' },
+  { title: 'Mock Exams', href: '/app/mock-exams', icon: ClipboardList, description: 'Take practice tests and track scores' },
   { title: 'Analytics', href: '/app/analytics', icon: BrainCircuit, description: 'Track learning progress' },
 ];
 export default function DashboardPage() {

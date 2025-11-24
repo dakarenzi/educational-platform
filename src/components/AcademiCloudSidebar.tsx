@@ -29,6 +29,7 @@ const navItems = [
   { to: '/app/flashcards', icon: Presentation, label: 'Flashcards' },
   { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
   { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
+  { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams' },
 ];
 const studentNavItems = [
     { to: '/app/my-progress', icon: ClipboardCheck, label: 'My Progress' },
