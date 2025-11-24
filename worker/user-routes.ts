@@ -2,18 +2,18 @@ import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
 import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
-    userRole: User['role'] | 'super-admin';
+    userRole: UserRole;
   };
 };
-export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
+export function userRoutes(app: Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>) {
   // Middleware to simulate a tenant and user role context
-  const tenantMiddleware = async (c: Context<AppContext>, next: Next) => {
+  const tenantMiddleware = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>, next: Next) => {
     // In a real app, this would come from a JWT or session
-    const mockUserRole = c.req.header('X-Mock-Role') as User['role'] | 'super-admin' || 'student';
+    const mockUserRole = c.req.header('X-Mock-Role') as UserRole || 'student';
     const mockTenantId = 'inst-1';
     c.set('userRole', mockUserRole);
     if (mockUserRole === 'super-admin') {
@@ -127,9 +127,32 @@ export function userRoutes(app: Hono<{ Bindings: Env } & AppContext>) {
     console.log(`[WEBHOOK] Course deleted: ${id}`);
     return ok(c, { success: true });
   });
-  // Public-facing aliases
-  app.get('/api/courses', (c) => c.json(c.get('app').fetch(new Request(c.req.url.replace('/api/courses', '/api/cms/courses'), c.req.raw)).then(res => res.json())));
-  app.get('/api/courses/:id', (c) => c.json(c.get('app').fetch(new Request(c.req.url.replace('/api/courses', '/api/cms/courses'), c.req.raw)).then(res => res.json())));
+  // Public-facing routes (re-implemented)
+  app.get('/api/courses', async (c) => {
+    const tenantId = c.get('tenantId');
+    await CourseEntity.ensureSeed(c.env, tenantId);
+    const page = await CourseEntity.list(c.env, tenantId);
+    return ok(c, page.items);
+  });
+  app.get('/api/courses/:id', async (c) => {
+    const tenantId = c.get('tenantId');
+    const { id } = c.req.param();
+    const courseEntity = new CourseEntity(c.env, id);
+    if (!(await courseEntity.exists())) return notFound(c, 'Course not found');
+    const course = await courseEntity.getState();
+    if (course.tenantId !== tenantId) return notFound(c, 'Course not found in this institution');
+    await LessonEntity.ensureSeed(c.env, tenantId);
+    await QuizEntity.ensureSeed(c.env, tenantId);
+    const allLessons = await LessonEntity.list(c.env, tenantId);
+    const allQuizzes = await QuizEntity.list(c.env, tenantId);
+    const quizMap = new Map<string, Quiz>();
+    allQuizzes.items.forEach(quiz => quizMap.set(quiz.lessonId, quiz));
+    const courseLessons = allLessons.items
+      .filter(lesson => lesson.courseId === id)
+      .map(lesson => ({ ...lesson, quiz: quizMap.get(lesson.id) }));
+    const courseWithLessons: Course = { ...course, lessons: courseLessons };
+    return ok(c, courseWithLessons);
+  });
   // TEACHER-SPECIFIC ROUTES
   app.get('/api/teacher/courses', async (c) => {
     const tenantId = c.get('tenantId');

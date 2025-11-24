@@ -7,13 +7,16 @@ export interface Institution {
   id: string;
   name: string;
 }
-export type UserRole = 'admin' | 'teacher' | 'student';
+export type UserRole = 'admin' | 'teacher' | 'student' | 'super-admin';
 export interface User {
   id: string;
   tenantId: string;
   name: string;
   role: UserRole;
   avatarUrl?: string;
+}
+export interface SuperAdminUser extends User {
+  role: 'super-admin';
 }
 export interface Course {
   id: string;
