@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission } from "@shared/types";
+import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
   { id: 'inst-1', name: 'Cloudflare University' },
   { id: 'inst-2', name: 'Workers Academy' },
@@ -58,6 +58,7 @@ const MOCK_FLASHCARD_DECKS: FlashcardDeck[] = [
         ]
     }
 ];
+const MOCK_PENDING_TENANTS: PendingTenant[] = [];
 // INSTITUTION ENTITY
 export class InstitutionEntity extends IndexedEntity<Institution> {
   static readonly entityName = "institution";
@@ -111,4 +112,11 @@ export class QuizSubmissionEntity extends IndexedEntity<QuizSubmission> {
   static readonly entityName = "quizSubmission";
   static readonly indexName = "quizSubmissions";
   static readonly initialState: QuizSubmission = { id: "", tenantId: "", quizId: "", studentId: "", score: 0, submittedAt: "" };
+}
+// PENDING TENANT ENTITY
+export class PendingTenantEntity extends IndexedEntity<PendingTenant> {
+  static readonly entityName = "pendingTenant";
+  static readonly indexName = "pendingTenants";
+  static readonly initialState: PendingTenant = { id: "", name: "", country: "", curriculum: "", languages: [], adminEmail: "", status: 'pending', requestedAt: "" };
+  static seedData = MOCK_PENDING_TENANTS;
 }

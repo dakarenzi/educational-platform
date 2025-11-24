@@ -1,8 +1,8 @@
 import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
-import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity } from "./entities";
+import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -10,6 +10,22 @@ export type AppContext = {
   };
 };
 export function userRoutes(app: Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>) {
+  // PUBLIC ROUTE FOR TENANT REQUESTS
+  app.post('/api/tenant-request', async (c) => {
+    const { name, country, curriculum, languages, adminEmail, verificationDomain } = await c.req.json<Partial<PendingTenant>>();
+    if (!isStr(name) || !isStr(country) || !isStr(curriculum) || !Array.isArray(languages) || !isStr(adminEmail)) {
+      return bad(c, 'Missing required fields for tenant request.');
+    }
+    const newPendingTenant: PendingTenant = {
+      id: crypto.randomUUID(),
+      name, country, curriculum, languages, adminEmail, verificationDomain,
+      status: 'pending',
+      requestedAt: new Date().toISOString(),
+    };
+    const created = await PendingTenantEntity.create(c.env, 'system', newPendingTenant);
+    console.log(`[TENANT REQUEST] New pending tenant created: ${created.id} for ${name}. Notifying super-admins.`);
+    return ok(c, created);
+  });
   // Middleware to simulate a tenant and user role context
   const tenantMiddleware = async (c: Context<{ Bindings: Env; Variables: AppContext['Variables'] }>, next: Next) => {
     // In a real app, this would come from a JWT or session
@@ -30,6 +46,44 @@ export function userRoutes(app: Hono<{ Bindings: Env; Variables: AppContext['Var
     await InstitutionEntity.ensureSeed(c.env, 'system');
     const page = await InstitutionEntity.list(c.env, 'system');
     return ok(c, page.items);
+  });
+  app.get('/api/super-admin/pending-tenants', async (c) => {
+    if (c.get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const page = await PendingTenantEntity.list(c.env, 'system');
+    return ok(c, page.items);
+  });
+  app.put('/api/super-admin/pending-tenants/:id/approve', async (c) => {
+    if (c.get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const { id } = c.req.param();
+    const pendingEntity = new PendingTenantEntity(c.env, id);
+    if (!(await pendingEntity.exists())) return notFound(c, 'Pending tenant not found');
+    const pending = await pendingEntity.getState();
+    if (pending.status !== 'pending') return bad(c, 'Tenant request is not in pending state.');
+    pending.status = 'approved';
+    pending.approvedAt = new Date().toISOString();
+    await pendingEntity.save(pending);
+    const newInstitution: Institution = { id: `inst-${pending.id.substring(0, 8)}`, name: pending.name, approvedFromRequest: pending.id };
+    await InstitutionEntity.create(c.env, 'system', newInstitution);
+    console.log(`[APPROVAL] Tenant ${newInstitution.id} activated for ${pending.name}.`);
+    console.log(`[PROVISIONING] Simulating resource creation for ${newInstitution.id}: KV, R2, Vectorize...`);
+    console.log(`[EMAIL SIM] Sending approval notification to ${pending.adminEmail}.`);
+    return ok(c, { success: true });
+  });
+  app.put('/api/super-admin/pending-tenants/:id/reject', async (c) => {
+    if (c.get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const { id } = c.req.param();
+    const { notes } = await c.req.json<{ notes?: string }>();
+    const pendingEntity = new PendingTenantEntity(c.env, id);
+    if (!(await pendingEntity.exists())) return notFound(c, 'Pending tenant not found');
+    const pending = await pendingEntity.getState();
+    if (pending.status !== 'pending') return bad(c, 'Tenant request is not in pending state.');
+    pending.status = 'rejected';
+    pending.rejectedAt = new Date().toISOString();
+    pending.notes = notes;
+    await pendingEntity.save(pending);
+    console.log(`[REJECT] Tenant request ${id} for ${pending.name} was rejected. Notes: ${notes}`);
+    console.log(`[EMAIL SIM] Sending rejection notification to ${pending.adminEmail}.`);
+    return ok(c, { success: true });
   });
   app.post('/api/super-admin/tenants', async (c) => {
     if (c.get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
