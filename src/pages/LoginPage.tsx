@@ -1,6 +1,6 @@
 import { BookOpen, GraduationCap, UserCog, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -50,24 +50,15 @@ export default function LoginPage() {
     <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
       <ThemeToggle className="absolute top-6 right-6" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(217,216,255,0.5),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(38,38,97,0.6),rgba(10,10,20,0))] -z-10" />
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center mb-12"
-      >
+      <div className="text-center mb-12">
         <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground">
           Welcome to AcademiCloud
         </h1>
         <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
           The illustrative educational platform to create, manage, and deliver engaging online learning experiences.
         </p>
-      </motion.div>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, delay: 0.2 }}
-      >
+      </div>
+      <div>
         <Card className="w-full max-w-md mx-auto shadow-xl">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Select Your Role</CardTitle>
@@ -93,7 +84,7 @@ export default function LoginPage() {
             })}
           </CardContent>
         </Card>
-      </motion.div>
+      </div>
       <footer className="absolute bottom-6 text-center text-muted-foreground/80 text-sm">
         <p>Built with ❤️ at Cloudflare</p>
       </footer>
