@@ -67,20 +67,20 @@ export function AcademiCloudSidebar() {
   const isSuperAdmin = user?.role === 'super-admin';
   const visibleNavItems = navItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
   const NavItem = ({ to, icon: Icon, label, external }: { to: string; icon: React.ElementType; label: string; external?: boolean }) => {
-    const commonClasses = 'group flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground';
+    const commonClasses = 'group flex items-center gap-4 rounded-md px-3 py-2 text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-l-2 border-transparent';
     const content = (
       <>
         <motion.div whileHover={{ scale: 1.1 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}>
           <Icon className="h-5 w-5 flex-shrink-0" />
         </motion.div>
-        <span className="hidden md:inline">{label}</span>
+        <span className="hidden md:inline whitespace-normal">{label}</span>
       </>
     );
     return (
       <Tooltip>
         <TooltipTrigger asChild>
           {external ? (
-            <a href={to} target="_blank" rel="noopener noreferrer" className={commonClasses}>
+            <a href={to} target="_blank" rel="noopener noreferrer" className={commonClasses} aria-label={`Navigate to ${label}`}>
               {content}
             </a>
           ) : (
@@ -89,9 +89,10 @@ export function AcademiCloudSidebar() {
               className={({ isActive }) =>
                 cn(
                   commonClasses,
-                  isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground'
+                  isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground border-sidebar-primary'
                 )
               }
+              aria-label={`Navigate to ${label}`}
             >
               {content}
             </NavLink>
@@ -111,7 +112,7 @@ export function AcademiCloudSidebar() {
           {isLoading ? (
             <Skeleton className="h-6 w-36" />
           ) : (
-            <h1 className="text-lg font-bold font-display text-sidebar-foreground truncate">
+            <h1 className="text-lg font-bold font-display text-sidebar-foreground whitespace-normal">
               {institution?.name || 'AcademiCloud'}
             </h1>
           )}
@@ -153,7 +154,7 @@ export function AcademiCloudSidebar() {
             </div>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={handleLogout} className="hidden md:inline-flex">
+                <Button variant="ghost" size="icon" onClick={handleLogout} className="hidden md:inline-flex" aria-label="Log Out">
                   <LogOut className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
@@ -163,7 +164,7 @@ export function AcademiCloudSidebar() {
           <div className="flex md:hidden items-center justify-center mt-2">
              <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <Button variant="ghost" size="icon" onClick={handleLogout} aria-label="Log Out">
                   <LogOut className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
