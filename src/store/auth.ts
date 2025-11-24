@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import type { User } from '@shared/types';
 
 interface AuthState {
@@ -111,7 +111,23 @@ persist(state);
 
 // Exported hook
 export function useAuthStore<T>(selector: (s: AuthState) => T): T {
-  const selected = useSyncExternalStore(subscribe, () => selector(getState()), () => selector(getState()));
+  const [selected, setSelected] = useState(() => selector(getState()));
+
+  useEffect(() => {
+    const handleChange = () => {
+      try {
+        setSelected(selector(getState()));
+      } catch {
+        // swallow selector errors to avoid breaking components
+      }
+    };
+
+    const unsubscribe = subscribe(handleChange);
+    // Ensure we capture any state changes that occurred between render and effect
+    handleChange();
+    return unsubscribe;
+  }, [selector]);
+
   return selected;
 }
 
