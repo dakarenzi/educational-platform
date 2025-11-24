@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   Shield,
   FileText,
+  MessageCircle,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -24,14 +25,15 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-const navItems: { to: string; icon: React.ElementType; label: string; roles?: UserRole[] }[] = [
+const navItems: { to: string; icon: React.ElementType; label: string; roles?: UserRole[]; external?: boolean }[] = [
   { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/app/courses', icon: Book, label: 'Courses' },
   { to: '/app/flashcards', icon: Presentation, label: 'Flashcards' },
   { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
-  { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
   { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams', roles: ['admin', 'teacher', 'student'] },
   { to: '/app/resources', icon: FileText, label: 'Resources', roles: ['admin', 'teacher', 'student'] },
+  { to: 'https://community.academicloud.com/discord', icon: MessageCircle, label: 'Community', external: true },
+  { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
 ];
 const studentNavItems = [
     { to: '/app/my-progress', icon: ClipboardCheck, label: 'My Progress' },
@@ -64,29 +66,43 @@ export function AcademiCloudSidebar() {
   const isStudent = user?.role === 'student';
   const isSuperAdmin = user?.role === 'super-admin';
   const visibleNavItems = navItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
-  const NavItem = ({ to, icon: Icon, label }: { to: string; icon: React.ElementType; label: string }) => (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <NavLink
-          to={to}
-          className={({ isActive }) =>
-            cn(
-              'group flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-              isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground'
-            )
-          }
-        >
-          <motion.div whileHover={{ scale: 1.1 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}>
-            <Icon className="h-5 w-5 flex-shrink-0" />
-          </motion.div>
-          <span className="hidden md:inline">{label}</span>
-        </NavLink>
-      </TooltipTrigger>
-      <TooltipContent side="right" className="md:hidden">
-        <p>{label}</p>
-      </TooltipContent>
-    </Tooltip>
-  );
+  const NavItem = ({ to, icon: Icon, label, external }: { to: string; icon: React.ElementType; label: string; external?: boolean }) => {
+    const commonClasses = 'group flex items-center gap-3 rounded-md px-3 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground';
+    const content = (
+      <>
+        <motion.div whileHover={{ scale: 1.1 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}>
+          <Icon className="h-5 w-5 flex-shrink-0" />
+        </motion.div>
+        <span className="hidden md:inline">{label}</span>
+      </>
+    );
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {external ? (
+            <a href={to} target="_blank" rel="noopener noreferrer" className={commonClasses}>
+              {content}
+            </a>
+          ) : (
+            <NavLink
+              to={to}
+              className={({ isActive }) =>
+                cn(
+                  commonClasses,
+                  isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground'
+                )
+              }
+            >
+              {content}
+            </NavLink>
+          )}
+        </TooltipTrigger>
+        <TooltipContent side="right" className="md:hidden">
+          <p>{label}</p>
+        </TooltipContent>
+      </Tooltip>
+    );
+  };
   return (
     <aside className="flex flex-col w-20 md:w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-sm transition-all duration-300">
       <div className="p-4 border-b border-sidebar-border flex items-center gap-3 min-h-[69px]">
