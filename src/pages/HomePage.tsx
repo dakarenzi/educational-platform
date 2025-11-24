@@ -1,4 +1,4 @@
-import { Book, BrainCircuit, ClipboardList, LayoutDashboard, Presentation, Sparkles, FileText } from 'lucide-react';
+import { Book, BrainCircuit, ClipboardList, LayoutDashboard, Presentation, Sparkles, FileText, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,10 +9,12 @@ const dashboardItems = [
   { title: 'AI Tutor', href: '/app/tutor', icon: Sparkles, description: 'Get help from an AI assistant' },
   { title: 'Mock Exams', href: '/app/mock-exams', icon: ClipboardList, description: 'Take practice tests and track scores' },
   { title: 'Resources', href: '/app/resources', icon: FileText, description: 'Access learning materials and downloads' },
-  { title: 'Analytics', href: '/app/analytics', icon: BrainCircuit, description: 'Track learning progress' },
+  { title: 'Community', href: 'https://community.academicloud.com/discord', icon: MessageCircle, description: 'Connect with peers and collaborate', external: true, roles: ['student', 'teacher'] },
+  { title: 'Analytics', href: '/app/analytics', icon: BrainCircuit, description: 'Track learning progress', roles: ['admin', 'teacher'] },
 ];
 export default function DashboardPage() {
   const user = useAuthStore(s => s.user);
+  const visibleItems = dashboardItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -54,21 +56,30 @@ export default function DashboardPage() {
           initial="hidden"
           animate="visible"
         >
-          {dashboardItems.map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
+            const cardContent = (
+              <Card className="h-full transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-2 hover:border-primary">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-semibold">{item.title}</CardTitle>
+                  <Icon className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">{item.description}</p>
+                </CardContent>
+              </Card>
+            );
             return (
               <motion.div key={item.title} variants={itemVariants}>
-                <Link to={item.href} className="block group">
-                  <Card className="h-full transition-all duration-300 ease-in-out hover:shadow-xl hover:-translate-y-2 hover:border-primary">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                      <CardTitle className="text-xl font-semibold">{item.title}</CardTitle>
-                      <Icon className="h-8 w-8 text-muted-foreground group-hover:text-primary transition-colors" />
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-muted-foreground">{item.description}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
+                {item.external ? (
+                  <a href={item.href} target="_blank" rel="noopener noreferrer" className="block group">
+                    {cardContent}
+                  </a>
+                ) : (
+                  <Link to={item.href} className="block group">
+                    {cardContent}
+                  </Link>
+                )}
               </motion.div>
             );
           })}

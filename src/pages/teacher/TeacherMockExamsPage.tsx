@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom';
 const mockExamFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
   description: z.string().optional(),
-  duration: z.coerce.number().int().min(10, 'Duration must be at least 10 minutes.').max(180, 'Duration cannot exceed 180 minutes.'),
+  duration: z.number().int().min(10, 'Duration must be at least 10 minutes.').max(180, 'Duration cannot exceed 180 minutes.'),
 });
 type MockExamFormValues = z.infer<typeof mockExamFormSchema>;
 const fetchMockExams = async (): Promise<MockExam[]> => api<MockExam[]>('/api/mock-exams', { headers: { 'X-Mock-Role': 'teacher' } });
@@ -51,6 +51,7 @@ export default function TeacherMockExamsPage() {
         headers: { 'X-Mock-Role': 'teacher' },
         body: JSON.stringify({
           ...values,
+          duration: Number(values.duration), // Ensure it's a number
           teacherId: user!.id,
           questions: mockQuestions,
         }),
@@ -137,7 +138,15 @@ export default function TeacherMockExamsPage() {
                     <FormItem>
                       <FormLabel>Duration (minutes)</FormLabel>
                       <FormControl>
-                        <Input type="number" min={10} max={180} placeholder="60" {...field} />
+                        <Input
+                          type="number"
+                          min={10}
+                          max={180}
+                          step={1}
+                          placeholder="60"
+                          {...field}
+                          onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
