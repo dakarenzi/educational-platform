@@ -2,6 +2,7 @@ import { IndexedEntity } from "./core-utils";
 import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
   { id: 'inst-1', name: 'Cloudflare University' },
+  { id: 'inst-2', name: 'Workers Academy' },
 ];
 const MOCK_USERS: User[] = [
   { id: 'user-admin-1', tenantId: 'inst-1', name: 'Dr. Evelyn Reed', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin1' },
