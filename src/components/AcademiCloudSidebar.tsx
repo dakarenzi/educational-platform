@@ -67,13 +67,13 @@ export function AcademiCloudSidebar() {
   const isSuperAdmin = user?.role === 'super-admin';
   const visibleNavItems = navItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
   const NavItem = ({ to, icon: Icon, label, external }: { to: string; icon: React.ElementType; label: string; external?: boolean }) => {
-    const commonClasses = 'group flex items-center gap-4 rounded-md px-3 py-2 text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-l-2 border-transparent';
+    const commonClasses = 'group flex items-center gap-4 min-w-0 rounded-md px-3 py-2 text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-l-2 border-transparent';
     const content = (
       <>
         <motion.div whileHover={{ scale: 1.1 }} transition={{ type: 'spring', stiffness: 400, damping: 10 }}>
           <Icon className="h-5 w-5 flex-shrink-0" />
         </motion.div>
-        <span className="hidden md:inline whitespace-normal">{label}</span>
+        <span className="hidden md:block md:flex-1 md:min-w-0 md:whitespace-normal md:break-words">{label}</span>
       </>
     );
     return (
