@@ -1,4 +1,4 @@
-import { Book, BrainCircuit, ClipboardList, LayoutDashboard, Presentation, Sparkles } from 'lucide-react';
+import { Book, BrainCircuit, ClipboardList, LayoutDashboard, Presentation, Sparkles, FileText } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,7 @@ const dashboardItems = [
   { title: 'Flashcards', href: '/app/flashcards', icon: Presentation, description: 'Study with flashcard decks' },
   { title: 'AI Tutor', href: '/app/tutor', icon: Sparkles, description: 'Get help from an AI assistant' },
   { title: 'Mock Exams', href: '/app/mock-exams', icon: ClipboardList, description: 'Take practice tests and track scores' },
+  { title: 'Resources', href: '/app/resources', icon: FileText, description: 'Access learning materials and downloads' },
   { title: 'Analytics', href: '/app/analytics', icon: BrainCircuit, description: 'Track learning progress' },
 ];
 export default function DashboardPage() {
