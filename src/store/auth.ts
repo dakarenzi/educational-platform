@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { User } from '@shared/types';
 
 interface AuthState {
@@ -86,7 +86,7 @@ const setState = (partial: Partial<AuthState> | ((prev: AuthState) => Partial<Au
 
 const subscribe = (listener: Subscriber) => {
   subscribers.add(listener);
-  return () => subscribers.delete(listener);
+  return () => { subscribers.delete(listener); };
 };
 
 // Stable action implementations
@@ -111,12 +111,26 @@ persist(state);
 
 // Exported hook
 export function useAuthStore<T>(selector: (s: AuthState) => T): T {
-  const [selected, setSelected] = useState(() => selector(getState()));
+  // Keep a stable ref to the latest selector so the subscription effect
+  // doesn't depend on the selector identity.
+  const selectorRef = useRef(selector);
 
+  // Initialize with the current selector applied to store state.
+  const [selected, setSelected] = useState(() => selectorRef.current(getState()));
+
+  // Update the selectorRef whenever a new selector is provided.
+  useEffect(() => {
+    selectorRef.current = selector;
+  }, [selector]);
+
+  // Subscribe on mount only. The handler reads selectorRef.current so it
+  // always uses the latest selector without re-subscribing.
   useEffect(() => {
     const handleChange = () => {
       try {
-        setSelected(selector(getState()));
+        const newSelected = selectorRef.current(getState());
+        // Only update if the selected value actually changed.
+        setSelected((prev) => (Object.is(prev, newSelected) ? prev : newSelected));
       } catch {
         // swallow selector errors to avoid breaking components
       }
@@ -126,7 +140,7 @@ export function useAuthStore<T>(selector: (s: AuthState) => T): T {
     // Ensure we capture any state changes that occurred between render and effect
     handleChange();
     return unsubscribe;
-  }, [selector]);
+  }, []);
 
   return selected;
 }
