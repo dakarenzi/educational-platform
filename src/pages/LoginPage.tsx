@@ -1,4 +1,4 @@
-import { BookOpen, GraduationCap, UserCog } from 'lucide-react';
+import { BookOpen, GraduationCap, UserCog, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuthStore } from '@/store/auth';
 import type { UserRole } from '@shared/types';
-const roleData = {
+const roleData: Record<UserRole, { icon: React.ElementType; title: string; description: string }> = {
   student: {
     icon: GraduationCap,
     title: 'Student',
@@ -22,6 +22,11 @@ const roleData = {
     title: 'Admin',
     description: 'Manage the platform, users, and institutional settings.',
   },
+  'super-admin': {
+    icon: Shield,
+    title: 'Super Admin',
+    description: 'Manage platform-wide tenants and analytics.',
+  },
 };
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -35,7 +40,11 @@ export default function LoginPage() {
       role: role,
     };
     login(mockUser);
-    navigate('/app/dashboard');
+    if (role === 'super-admin') {
+        navigate('/app/super-admin');
+    } else {
+        navigate('/app/dashboard');
+    }
   };
   return (
     <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -65,7 +74,7 @@ export default function LoginPage() {
             <CardDescription>Choose how you'd like to sign in.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {(['student', 'teacher', 'admin'] as UserRole[]).map((role) => {
+            {(['student', 'teacher', 'admin', 'super-admin'] as UserRole[]).map((role) => {
               const Icon = roleData[role].icon;
               return (
                 <Button
