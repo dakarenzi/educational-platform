@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-
 import { GraduationCap, Loader2, Send } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import type { PendingTenant } from '@shared/types';
@@ -16,7 +15,6 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ThemeToggle } from '@/components/ThemeToggle';
-
 const Confetti = ({ active, config }: { active?: boolean; config?: any }) => {
   if (!active) return null;
   // Lightweight inline SVG fallback that preserves the Confetti({ active, config }) signature.
@@ -105,8 +103,9 @@ export default function RequestTenantPage() {
                 <motion.div
                   key="success"
                   initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  animate={{ opacity: 1, scale: [1, 1.05, 1] }}
                   exit={{ opacity: 0, scale: 0.95 }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
                   className="flex flex-col items-center justify-center p-12 text-center"
                 >
                   <Confetti active={isSuccess} config={{ spread: 90, elementCount: 200 }} />
