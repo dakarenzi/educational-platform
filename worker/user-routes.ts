@@ -1,8 +1,8 @@
 import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
-import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity } from "./entities";
+import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -317,6 +317,91 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const deleted = await FlashcardDeckEntity.delete(c.env, tenantId, id);
     if (!deleted) return notFound(c, 'Flashcard deck not found');
     return ok(c, { success: true });
+  });
+  // RESOURCES
+  app.post('/api/resources', async (c) => {
+    const userRole = (c as any).get('userRole') as UserRole;
+    if (userRole !== 'teacher' && userRole !== 'admin') return c.json({ error: 'Forbidden' }, 403);
+    const { title, description, fileUrl, category, lessonId } = await c.req.json<Partial<Resource>>();
+    if (!isStr(title) || !isStr(fileUrl) || !isStr(category)) return bad(c, 'Required fields: title, fileUrl, category');
+    const tenantId = (c as any).get('tenantId') as string;
+    const newResource: Resource = {
+      id: crypto.randomUUID(),
+      tenantId,
+      title,
+      description: description || '',
+      fileUrl,
+      category: category as Resource['category'],
+      lessonId,
+      creatorId: 'user-teacher-1', // Mocked user
+      downloads: 0,
+      createdAt: new Date().toISOString(),
+    };
+    const created = await ResourceEntity.create(c.env, tenantId, newResource);
+    console.log(`[R2 SIM] Uploaded resource ${created.id} for tenant ${tenantId}`);
+    return ok(c, created);
+  });
+  app.get('/api/resources', async (c) => {
+    const tenantId = (c as any).get('tenantId') as string;
+    await ResourceEntity.ensureSeed(c.env, tenantId);
+    const lessonId = c.req.query('lessonId');
+    const search = c.req.query('search')?.toLowerCase();
+    const page = await ResourceEntity.list(c.env, tenantId);
+    let items = page.items;
+    if (lessonId) items = items.filter(r => r.lessonId === lessonId);
+    if (search) items = items.filter(r => r.title.toLowerCase().includes(search) || r.description?.toLowerCase().includes(search));
+    // Mock student enrollment check
+    if (((c as any).get('userRole') as UserRole) === 'student') {
+        const studentEnrolledCourseIds = ['course-1']; // Mock
+        const allLessons = (await LessonEntity.list(c.env, tenantId)).items;
+        const enrolledLessonIds = allLessons.filter(l => studentEnrolledCourseIds.includes(l.courseId)).map(l => l.id);
+        items = items.filter(r => !r.lessonId || enrolledLessonIds.includes(r.lessonId));
+    }
+    return ok(c, items);
+  });
+  app.get('/api/resources/:id', async (c) => {
+    const tenantId = (c as any).get('tenantId') as string;
+    const id = c.req.param('id');
+    const resourceEntity = new ResourceEntity(c.env, id);
+    if (!(await resourceEntity.exists())) return notFound(c, 'Resource not found');
+    const resource = await resourceEntity.getState();
+    if (resource.tenantId !== tenantId) return notFound(c, 'Resource not found in this institution');
+    return ok(c, resource);
+  });
+  app.put('/api/resources/:id', async (c) => {
+    const userRole = (c as any).get('userRole') as UserRole;
+    if (userRole !== 'teacher' && userRole !== 'admin') return c.json({ error: 'Forbidden' }, 403);
+    const tenantId = (c as any).get('tenantId') as string;
+    const id = c.req.param('id');
+    const updates = await c.req.json<Partial<Resource>>();
+    const resourceEntity = new ResourceEntity(c.env, id);
+    if (!(await resourceEntity.exists())) return notFound(c, 'Resource not found');
+    const current = await resourceEntity.getState();
+    if (current.tenantId !== tenantId) return notFound(c, 'Resource not found in this institution');
+    // In a real app, check creatorId against the logged-in user
+    await resourceEntity.patch(updates);
+    return ok(c, await resourceEntity.getState());
+  });
+  app.delete('/api/resources/:id', async (c) => {
+    const userRole = (c as any).get('userRole') as UserRole;
+    if (userRole !== 'teacher' && userRole !== 'admin') return c.json({ error: 'Forbidden' }, 403);
+    const tenantId = (c as any).get('tenantId') as string;
+    const id = c.req.param('id');
+    const deleted = await ResourceEntity.delete(c.env, tenantId, id);
+    if (!deleted) return notFound(c, 'Resource not found');
+    console.log(`[R2 SIM] Deleted resource ${id} from tenant ${tenantId}`);
+    return ok(c, { success: true });
+  });
+  app.post('/api/resources/:id/download', async (c) => {
+    const tenantId = (c as any).get('tenantId') as string;
+    const id = c.req.param('id');
+    const resourceEntity = new ResourceEntity(c.env, id);
+    if (!(await resourceEntity.exists())) return notFound(c, 'Resource not found');
+    const resource = await resourceEntity.getState();
+    if (resource.tenantId !== tenantId) return notFound(c, 'Resource not found in this institution');
+    await resourceEntity.patch({ downloads: (resource.downloads || 0) + 1 });
+    console.log(`[R2 SIM] Downloaded resource ${id} from tenant ${tenantId}`);
+    return ok(c, { fileUrl: resource.fileUrl, downloads: (resource.downloads || 0) + 1 });
   });
   // STUDENT ENROLLMENT & PROGRESS
   app.post('/api/enroll', async (c) => {

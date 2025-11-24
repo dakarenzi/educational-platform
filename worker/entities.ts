@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant, MockExam, MockExamSubmission } from "@shared/types";
+import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant, MockExam, MockExamSubmission, Resource } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
   { id: 'inst-1', name: 'Cloudflare University', country: 'USA', curriculum: 'US', languages: ['en'], adminEmail: 'contact@cfu.edu' },
   { id: 'inst-2', name: 'Workers Academy', country: 'France', curriculum: 'AEFE', languages: ['fr', 'en'], adminEmail: 'contact@workers.ac' },
@@ -59,6 +59,10 @@ const MOCK_FLASHCARD_DECKS: FlashcardDeck[] = [
     }
 ];
 const MOCK_PENDING_TENANTS: PendingTenant[] = [];
+const MOCK_RESOURCES: Resource[] = [
+    { id: 'res-1', tenantId: 'inst-1', title: 'Intro to Workers PDF', description: 'A comprehensive guide to Cloudflare Workers.', fileUrl: 'https://via.placeholder.com/300x400?text=PDF', category: 'Documents', lessonId: 'lesson-2-1', creatorId: 'user-teacher-1', downloads: 5, createdAt: new Date().toISOString() },
+    { id: 'res-2', tenantId: 'inst-1', title: 'T-Rex Skeleton Diagram', description: 'Anatomy of a Tyrannosaurus Rex.', fileUrl: 'https://images.unsplash.com/photo-1599008633841-92dec59f7186?q=80&w=800', category: 'Images', lessonId: 'lesson-1-1', creatorId: 'user-teacher-1', downloads: 12, createdAt: new Date().toISOString() },
+];
 // INSTITUTION ENTITY
 export class InstitutionEntity extends IndexedEntity<Institution> {
   static readonly entityName = "institution";
@@ -135,7 +139,6 @@ export class MockExamEntity extends IndexedEntity<MockExam> {
   };
   static seedData: MockExam[] = [];
 }
-
 // MOCK EXAM SUBMISSION ENTITY
 export class MockExamSubmissionEntity extends IndexedEntity<MockExamSubmission> {
   static readonly entityName = "mockExamSubmission";
@@ -149,4 +152,20 @@ export class MockExamSubmissionEntity extends IndexedEntity<MockExamSubmission> 
     timeTaken: 0,
     submittedAt: ""
   };
+}
+// RESOURCE ENTITY
+export class ResourceEntity extends IndexedEntity<Resource> {
+    static readonly entityName = "resource";
+    static readonly indexName = "resources";
+    static readonly initialState: Resource = {
+        id: "",
+        tenantId: "",
+        title: "",
+        fileUrl: "",
+        category: "Documents",
+        creatorId: "",
+        downloads: 0,
+        createdAt: ""
+    };
+    static seedData = MOCK_RESOURCES;
 }

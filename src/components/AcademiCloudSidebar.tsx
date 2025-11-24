@@ -10,6 +10,7 @@ import {
   PenSquare,
   ClipboardCheck,
   Shield,
+  FileText,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -30,6 +31,7 @@ const navItems: { to: string; icon: React.ElementType; label: string; roles?: Us
   { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
   { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
   { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams', roles: ['admin', 'teacher', 'student'] },
+  { to: '/app/resources', icon: FileText, label: 'Resources', roles: ['admin', 'teacher', 'student'] },
 ];
 const studentNavItems = [
     { to: '/app/my-progress', icon: ClipboardCheck, label: 'My Progress' },

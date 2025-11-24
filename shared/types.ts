@@ -117,3 +117,15 @@ export interface MockExam {
   submissions?: MockExamSubmission[];
   createdAt: string;
 }
+export interface Resource {
+  id: string;
+  tenantId: string;
+  title: string;
+  description?: string;
+  fileUrl: string; // Mock URL
+  category: 'Documents' | 'Images' | 'Videos' | 'Links';
+  lessonId?: string;
+  creatorId: string;
+  downloads: number;
+  createdAt: string;
+}
