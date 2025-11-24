@@ -22,7 +22,7 @@ import { Link } from 'react-router-dom';
 const mockExamFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
   description: z.string().optional(),
-  duration: z.number().int().min(10, 'Duration must be at least 10 minutes.').max(180, 'Duration cannot exceed 180 minutes.'),
+  duration: z.coerce.number().min(10, 'Duration must be at least 10 minutes.').max(180, 'Duration cannot exceed 180 minutes.'),
 });
 type MockExamFormValues = z.infer<typeof mockExamFormSchema>;
 const fetchMockExams = async (): Promise<MockExam[]> => api<MockExam[]>('/api/mock-exams', { headers: { 'X-Mock-Role': 'teacher' } });
@@ -40,6 +40,7 @@ export default function TeacherMockExamsPage() {
   });
   const createMutation = useMutation({
     mutationFn: (values: MockExamFormValues) => {
+      // Mock questions from existing quizzes (simplified: fetch recent quiz questions)
       const mockQuestions: MockExamQuestion[] = [
         { id: 'q1', text: 'What is the primary function of a Cloudflare Worker?', options: ['Edge computing', 'Origin storage', 'DNS resolution', 'Client-side caching'], correctAnswer: 0 },
         { id: 'q2', text: 'Which storage solution offers strong consistency for Workers?', options: ['R2', 'KV', 'Durable Objects', 'D1'], correctAnswer: 2 },
@@ -51,7 +52,6 @@ export default function TeacherMockExamsPage() {
         headers: { 'X-Mock-Role': 'teacher' },
         body: JSON.stringify({
           ...values,
-          duration: Number(values.duration),
           teacherId: user!.id,
           questions: mockQuestions,
         }),
@@ -73,9 +73,6 @@ export default function TeacherMockExamsPage() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete exam.'),
   });
-  const onSubmit = (values: MockExamFormValues) => {
-    createMutation.mutate(values);
-  };
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
@@ -85,8 +82,7 @@ export default function TeacherMockExamsPage() {
     visible: { y: 0, opacity: 1 },
   };
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="py-8 md:py-10 lg:py-12">
+    <div>
         <div className="flex justify-between items-center mb-8">
           <div>
             <h1 className="text-3xl font-bold font-display text-foreground">Manage Mock Exams</h1>
@@ -105,7 +101,7 @@ export default function TeacherMockExamsPage() {
                 <DialogDescription>Fill in the details for your practice exam.</DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form onSubmit={form.handleSubmit((values) => createMutation.mutate(values))} className="space-y-4">
                   <FormField
                     control={form.control}
                     name="title"
@@ -113,7 +109,7 @@ export default function TeacherMockExamsPage() {
                       <FormItem>
                         <FormLabel>Exam Title</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Midterm Practice Exam" {...field} disabled={createMutation.isPending} />
+                          <Input placeholder="e.g., Midterm Practice Exam" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -126,7 +122,7 @@ export default function TeacherMockExamsPage() {
                       <FormItem>
                         <FormLabel>Description (Optional)</FormLabel>
                         <FormControl>
-                          <Input placeholder="Brief overview of the exam" {...field} disabled={createMutation.isPending} />
+                          <Input placeholder="Brief overview of the exam" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -139,16 +135,7 @@ export default function TeacherMockExamsPage() {
                       <FormItem>
                         <FormLabel>Duration (minutes)</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            min={10}
-                            max={180}
-                            step={1}
-                            placeholder="60"
-                            {...field}
-                            onChange={e => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
-                            disabled={createMutation.isPending}
-                          />
+                          <Input type="number" min={10} max={180} placeholder="60" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

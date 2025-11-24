@@ -26,12 +26,15 @@ import AnalyticsPage from '@/pages/AnalyticsPage';
 import QuizCreatorPage from '@/pages/QuizCreatorPage';
 import QuizTakerPage from '@/pages/QuizTakerPage';
 import MyProgressPage from '@/pages/student/MyProgressPage';
+import MockExamsPage from '@/pages/MockExamsPage';
+import MockExamTakerPage from '@/pages/student/MockExamTakerPage';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 // Teacher Tools
 import { TeacherLayout } from '@/components/layout/TeacherLayout';
 import TeacherDashboardPage from '@/pages/teacher/TeacherDashboardPage';
 import TeacherCoursesPage from '@/pages/teacher/TeacherCoursesPage';
 import TeacherFlashcardsPage from '@/pages/teacher/TeacherFlashcardsPage';
+import TeacherMockExamsPage from '@/pages/teacher/TeacherMockExamsPage';
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -59,6 +62,8 @@ const router = createBrowserRouter([
         { path: "flashcards/:deckId", element: <FlashcardDeckPage /> },
         { path: "tutor", element: <TutorPage /> },
         { path: "analytics", element: <AnalyticsPage /> },
+        { path: "mock-exams", element: <MockExamsPage /> },
+        { path: "mock-exams/:examId", element: <MockExamTakerPage /> },
         { path: "my-progress", element: <MyProgressPage /> },
         // Super-admin route with role check handled in the component/layout
         { path: "super-admin", element: <SuperAdminDashboard /> },
@@ -70,6 +75,7 @@ const router = createBrowserRouter([
             { path: "dashboard", element: <TeacherDashboardPage /> },
             { path: "courses", element: <TeacherCoursesPage /> },
             { path: "flashcards", element: <TeacherFlashcardsPage /> },
+            { path: "mock-exams", element: <TeacherMockExamsPage /> },
           ]
         }
     ]

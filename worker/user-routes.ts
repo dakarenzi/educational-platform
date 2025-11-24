@@ -1,8 +1,8 @@
 import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
-import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity } from "./entities";
+import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -425,6 +425,72 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       recentActivity,
     };
     return ok(c, analyticsData);
+  });
+  // MOCK EXAMS
+  app.get('/api/mock-exams', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    await MockExamEntity.ensureSeed(c.env, tenantId);
+    const page = await MockExamEntity.list(c.env, tenantId);
+    // Enrich with submissions
+    const allSubmissions = await MockExamSubmissionEntity.list(c.env, tenantId);
+    const enriched = page.items.map(exam => {
+      const submissions = allSubmissions.items.filter(s => s.examId === exam.id);
+      return { ...exam, submissions };
+    });
+    return ok(c, enriched);
+  });
+  app.post('/api/mock-exams', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const { title, description, duration, questions, teacherId } = await c.req.json<Partial<Omit<MockExam, 'id' | 'tenantId' | 'createdAt' | 'submissions'>>>();
+    if (!isStr(title) || !isStr(teacherId) || typeof duration !== 'number' || !Array.isArray(questions)) {
+      return bad(c, 'Required fields: title, teacherId, duration, questions');
+    }
+    const newExam: MockExam = {
+      id: crypto.randomUUID(),
+      tenantId,
+      title,
+      description: description || '',
+      teacherId,
+      duration,
+      questions: questions as MockExamQuestion[],
+      createdAt: new Date().toISOString(),
+      submissions: [],
+    };
+    const created = await MockExamEntity.create(c.env, tenantId, newExam);
+    return ok(c, created);
+  });
+  app.get('/api/mock-exams/:id', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const id = c.req.param('id') as string;
+    const examEntity = new MockExamEntity(c.env, id);
+    if (!(await examEntity.exists())) return notFound(c, 'Mock exam not found');
+    const exam = await examEntity.getState();
+    if (exam.tenantId !== tenantId) return notFound(c, 'Exam not found in this institution');
+    const submissionsPage = await MockExamSubmissionEntity.list(c.env, tenantId);
+    const examSubmissions = submissionsPage.items.filter(s => s.examId === id);
+    const enrichedExam: MockExam = { ...exam, submissions: examSubmissions };
+    return ok(c, enrichedExam);
+  });
+  app.post('/api/mock-exams/:id/submit', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const id = c.req.param('id') as string;
+    const { studentId, score, timeTaken, answers } = await c.req.json<{ studentId: string; score: number; timeTaken: number; answers?: Record<number, number> }>();
+    if (!isStr(studentId) || typeof score !== 'number' || typeof timeTaken !== 'number') {
+      return bad(c, 'studentId, score, and timeTaken are required');
+    }
+    const submissionId = `${studentId}-${id}-${Date.now()}`;
+    const newSubmission: MockExamSubmission = {
+      id: submissionId,
+      tenantId,
+      examId: id,
+      studentId,
+      score,
+      timeTaken,
+      submittedAt: new Date().toISOString(),
+      answers,
+    };
+    const created = await MockExamSubmissionEntity.create(c.env, tenantId, newSubmission);
+    return ok(c, created);
   });
   // AI TUTOR
   const tutorHandler = async (c: Context, mockResponses: { en: string; fr: string }) => {

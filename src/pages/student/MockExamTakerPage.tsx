@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Clock, CheckCircle, XCircle, Award, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import type { MockExam, MockExamSubmission } from '@shared/types';
@@ -50,7 +50,7 @@ export default function MockExamTakerPage() {
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to submit exam.'),
   });
   const finishExam = useCallback(() => {
-    if (!exam || !user || submitMutation.isPending || isFinished) return;
+    if (!exam || !user || isFinished) return;
     const score = Object.entries(selectedAnswers).reduce((acc, [qIndex, aIndex]) => {
       const questionIndex = Number(qIndex);
       if (questionIndex < exam.questions.length && exam.questions[questionIndex].correctAnswer === aIndex) {
@@ -58,7 +58,7 @@ export default function MockExamTakerPage() {
       }
       return acc;
     }, 0);
-    const percentage = exam.questions.length > 0 ? Math.round((score / exam.questions.length) * 100) : 0;
+    const percentage = Math.round((score / exam.questions.length) * 100);
     setFinalScore(percentage);
     submitMutation.mutate({
       studentId: user.id,
@@ -66,22 +66,19 @@ export default function MockExamTakerPage() {
       timeTaken: exam.duration * 60 - timeRemaining,
       answers: selectedAnswers,
     });
-  }, [exam, user, selectedAnswers, timeRemaining, submitMutation, isFinished]);
+  }, [exam, user, selectedAnswers, timeRemaining, isFinished, submitMutation]);
   useEffect(() => {
-    if (exam) {
-      setTimeRemaining(exam.duration * 60);
-    }
+    if (!exam) return;
+    setTimeRemaining(exam.duration * 60);
   }, [exam]);
   useEffect(() => {
-    if (timeRemaining <= 0 && exam && !isFinished && !submitMutation.isPending) {
-      finishExam();
-      return;
-    }
     if (timeRemaining > 0 && !isFinished) {
-      const timer = setTimeout(() => setTimeRemaining(prev => prev - 1), 1000);
+      const timer = setTimeout(() => setTimeRemaining(timeRemaining - 1), 1000);
       return () => clearTimeout(timer);
+    } else if (timeRemaining === 0 && !isFinished) {
+      finishExam();
     }
-  }, [timeRemaining, exam, isFinished, finishExam, submitMutation.isPending]);
+  }, [timeRemaining, isFinished, finishExam]);
   const currentQuestion = exam?.questions[currentQuestionIndex];
   const progress = exam ? ((currentQuestionIndex + 1) / exam.questions.length) * 100 : 0;
   const timeProgress = (timeRemaining / (exam?.duration * 60 || 1)) * 100;
