@@ -7,6 +7,10 @@ export interface Institution {
   id: string;
   name: string;
   approvedFromRequest?: string;
+  country?: string;
+  curriculum?: string;
+  languages?: string[];
+  adminEmail?: string;
 }
 export type UserRole = 'admin' | 'teacher' | 'student' | 'super-admin';
 export interface User {

@@ -7,6 +7,7 @@ The user interface is designed with an 'Illustrative' artistic style, featuring 
 *   **Multi-Tenant Architecture:** Securely isolate data for each educational institution.
 *   **Role-Based Access:** Separate experiences for Super Admins, Admins, Teachers, and Students.
 *   **Tenant Onboarding:** A public form for new institutions to request a tenant, with a super-admin approval workflow.
+*   **Manual Tenant Provisioning:** Super Admins can manually create and configure new tenants directly from their dashboard.
 *   **Course Management:** Teachers can create, edit, delete, and manage courses with detailed lesson structures.
 *   **Interactive Learning:** Build and take quizzes, and study with fully manageable flashcard decks.
 *   **Student Progress Tracking:** A dedicated "My Progress" dashboard for students to view enrolled courses and quiz history.
@@ -18,7 +19,8 @@ AcademiCloud is designed for scalability with a robust tenant management system:
 1.  **Request:** New institutions can apply for a tenant via the public `/request-tenant` page.
 2.  **Review:** Super Admins are notified (via console log simulation) and can review pending requests in their dashboard.
 3.  **Approve/Reject:** With a single click, Super Admins can approve or reject requests.
-4.  **Provisioning (Mocked):** Upon approval, the system simulates provisioning of tenant resources (like KV, R2, Vectorize via console logs) and sends a mock email notification to the new tenant's administrator.
+4.  **Manual Creation:** Super Admins can bypass the request form and provision a new tenant instantly using a detailed form in their dashboard.
+5.  **Provisioning (Mocked):** Upon approval or manual creation, the system simulates provisioning of tenant resources (like KV, R2, Vectorize via console logs) and sends a mock email notification to the new tenant's administrator.
 ## 🛠️ Technology Stack
 *   **Framework:** React (Vite) & Hono
 *   **Infrastructure:** Cloudflare Workers & Durable Objects
@@ -65,7 +67,7 @@ This project is designed for a two-part deployment to the Cloudflare network: th
 *   **Billing:** The application includes a mock Stripe integration endpoint. To implement real billing, you would need to integrate the Stripe SDK and manage API keys using Wrangler secrets.
 *   **Scalability:** The architecture uses a single Durable Object with tenant-prefixed keys for data isolation, which scales effectively for many tenants. For very large-scale relational data needs, integrating Cloudflare D1 would be the next step.
 *   **Compliance & Webhooks:** The application simulates audit logs and webhooks by logging events to the console. For production, these would be integrated with a dedicated logging service.
-*   **Internationalization (i18n):** The backend is structured to support multiple languages (EN/FR). The AI Tutor feature demonstrates this with a language toggle.
+*   **Internationalization (i18n):** The backend is structured to support multiple languages (EN/FR). The AI Tutor and tenant creation features demonstrate this with language toggles/selections.
 ## ✅ Production Checklist
 Before going live, ensure the following:
 1.  **Type Generation:** Run `bun cf-typegen` after any changes to the worker to ensure frontend and backend types are synchronized.

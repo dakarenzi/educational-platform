@@ -1,8 +1,8 @@
 import { IndexedEntity } from "./core-utils";
 import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
-  { id: 'inst-1', name: 'Cloudflare University' },
-  { id: 'inst-2', name: 'Workers Academy' },
+  { id: 'inst-1', name: 'Cloudflare University', country: 'USA', curriculum: 'US', languages: ['en'], adminEmail: 'contact@cfu.edu' },
+  { id: 'inst-2', name: 'Workers Academy', country: 'France', curriculum: 'AEFE', languages: ['fr', 'en'], adminEmail: 'contact@workers.ac' },
 ];
 const MOCK_USERS: User[] = [
   { id: 'user-admin-1', tenantId: 'inst-1', name: 'Dr. Evelyn Reed', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin1' },
@@ -63,7 +63,7 @@ const MOCK_PENDING_TENANTS: PendingTenant[] = [];
 export class InstitutionEntity extends IndexedEntity<Institution> {
   static readonly entityName = "institution";
   static readonly indexName = "institutions";
-  static readonly initialState: Institution = { id: "", name: "" };
+  static readonly initialState: Institution = { id: "", name: "", country: "", curriculum: "", languages: [], adminEmail: "" };
   static seedData = MOCK_INSTITUTIONS;
 }
 // USER ENTITY

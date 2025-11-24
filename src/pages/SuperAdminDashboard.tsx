@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { motion } from 'framer-motion';
-import { Building, Users, DollarSign, PlusCircle, Check, X, MoreVertical, Clock } from 'lucide-react';
+import { Building, Users, DollarSign, PlusCircle, Check, X, MoreVertical, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
@@ -9,19 +13,57 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 interface SuperAdminAnalytics {
   totalTenants: number;
   totalUsers: number;
   mockRevenue: number;
 }
+const languages = [
+  { id: 'en', label: 'English' },
+  { id: 'fr', label: 'French' },
+] as const;
+const tenantFormSchema = z.object({
+  name: z.string().min(3, 'Institution name must be at least 3 characters.'),
+  country: z.string().min(2, 'Please enter a country.'),
+  curriculum: z.enum(['Senegal', "Côte d'Ivoire", 'AEFE', 'US'] as const),
+  languages: z.array(z.string()).refine((value) => value.some((item) => item), {
+    message: 'You have to select at least one language.',
+  }),
+});
+type TenantFormValues = z.infer<typeof tenantFormSchema>;
 const fetchTenants = async (): Promise<Institution[]> => api<Institution[]>('/api/super-admin/tenants', { headers: { 'X-Mock-Role': 'super-admin' } });
 const fetchAnalytics = async (): Promise<SuperAdminAnalytics> => api<SuperAdminAnalytics>('/api/super-admin/analytics', { headers: { 'X-Mock-Role': 'super-admin' } });
 const fetchPendingTenants = async (): Promise<PendingTenant[]> => api<PendingTenant[]>('/api/super-admin/pending-tenants', { headers: { 'X-Mock-Role': 'super-admin' } });
 export default function SuperAdminDashboard() {
   const queryClient = useQueryClient();
+  const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const form = useForm<TenantFormValues>({
+    resolver: zodResolver(tenantFormSchema),
+    defaultValues: { name: '', country: '', languages: [] },
+  });
+  const createTenantMutation = useMutation({
+    mutationFn: (newTenant: TenantFormValues) => api('/api/super-admin/tenants', {
+      method: 'POST',
+      headers: { 'X-Mock-Role': 'super-admin' },
+      body: JSON.stringify({ ...newTenant, adminEmail: '' }),
+    }),
+    onSuccess: () => {
+      toast.success('Tenant created successfully!');
+      queryClient.invalidateQueries({ queryKey: ['super-admin-tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['super-admin-analytics'] });
+      setCreateDialogOpen(false);
+      form.reset();
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to create tenant.'),
+  });
   const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useQuery({ queryKey: ['super-admin-tenants'], queryFn: fetchTenants });
   const { data: analytics, isLoading: isLoadingAnalytics, error: analyticsError } = useQuery({ queryKey: ['super-admin-analytics'], queryFn: fetchAnalytics });
   const { data: pendingTenants, isLoading: isLoadingPending, error: pendingError } = useQuery({ queryKey: ['super-admin-pending-tenants'], queryFn: fetchPendingTenants });
@@ -110,14 +152,38 @@ export default function SuperAdminDashboard() {
         </motion.div>
         <motion.div className="mt-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between"><CardTitle>Active Tenants</CardTitle><Button disabled><PlusCircle className="mr-2 h-4 w-4" /> Add Manually</Button></CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Active Tenants</CardTitle>
+                <CardDescription>Manage all active institutions on the platform.</CardDescription>
+              </div>
+              <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Manually</Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader><DialogTitle>Create New Tenant</DialogTitle><DialogDescription>Manually provision a new institution.</DialogDescription></DialogHeader>
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit((d) => createTenantMutation.mutate(d))} className="space-y-4">
+                      <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Institution Name</FormLabel><FormControl><Input placeholder="e.g., Cloudflare University" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="e.g., USA" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="curriculum" render={({ field }) => (<FormItem><FormLabel>Curriculum</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a curriculum" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Senegal">Senegal</SelectItem><SelectItem value="Côte d'Ivoire">Côte d'Ivoire</SelectItem><SelectItem value="AEFE">AEFE</SelectItem><SelectItem value="US">US</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="languages" render={() => (<FormItem><div className="mb-2"><FormLabel>Languages</FormLabel></div>{languages.map((item) => (<FormField key={item.id} control={form.control} name="languages" render={({ field }) => (<FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0"><FormControl><Checkbox checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), item.id]) : field.onChange(field.value?.filter((value) => value !== item.id)); }} /></FormControl><FormLabel className="font-normal">{item.label}</FormLabel></FormItem>)} />))}<FormMessage /></FormItem>)} />
+                      <Button type="submit" className="w-full" disabled={createTenantMutation.isPending}>
+                        {createTenantMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create Tenant
+                      </Button>
+                    </form>
+                  </Form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
             <CardContent>
               {isLoadingTenants && <Skeleton className="h-48 w-full" />}
               {tenantsError && <p className="text-destructive">Failed to load tenants.</p>}
               {tenants && (
                 <Table>
-                  <TableHeader><TableRow><TableHead>Institution Name</TableHead><TableHead>Tenant ID</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                  <TableBody>{tenants.map((tenant) => (<TableRow key={tenant.id}><TableCell className="font-medium">{tenant.name}</TableCell><TableCell className="text-muted-foreground font-mono text-xs">{tenant.id}</TableCell><TableCell className="text-right"><Button variant="outline" size="sm" disabled>Manage</Button></TableCell></TableRow>))}</TableBody>
+                  <TableHeader><TableRow><TableHead>Institution</TableHead><TableHead>Country</TableHead><TableHead>Curriculum</TableHead><TableHead>Languages</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                  <TableBody>{tenants.map((tenant) => (<TableRow key={tenant.id}><TableCell className="font-medium">{tenant.name}</TableCell><TableCell>{tenant.country}</TableCell><TableCell>{tenant.curriculum}</TableCell><TableCell>{tenant.languages?.join(', ')}</TableCell><TableCell className="text-right"><Button variant="outline" size="sm" disabled>Manage</Button></TableCell></TableRow>))}</TableBody>
                 </Table>
               )}
             </CardContent>
