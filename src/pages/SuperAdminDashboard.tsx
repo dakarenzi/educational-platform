@@ -110,15 +110,15 @@ export default function SuperAdminDashboard() {
             ))}
           </motion.div>
         )}
-        <motion.div className="mt-12" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <motion.div className="mt-12" variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: 0.2 }}>
           <Card>
             <CardHeader><CardTitle>Pending Tenant Requests</CardTitle><CardDescription>Review and approve or reject new institution requests.</CardDescription></CardHeader>
             <CardContent>
               {isLoadingPending && <Skeleton className="h-48 w-full" />}
               {pendingError && <p className="text-destructive">Failed to load pending tenants.</p>}
               {pendingTenants && (
-                pendingTenants.length === 0 ? <p className="text-muted-foreground text-center py-8">No pending requests.</p> :
-                <Table>
+                pendingTenants.length === 0 ? <div className="text-center py-8"><Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground">No pending requests available.</p></div> :
+                <Table role="table" aria-label="Pending Tenant Requests">
                   <TableHeader><TableRow><TableHead>Institution</TableHead><TableHead>Admin Email</TableHead><TableHead>Requested</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {pendingTenants.map((tenant) => (
@@ -130,7 +130,7 @@ export default function SuperAdminDashboard() {
                         <TableCell className="text-right">
                           {tenant.status === 'pending' && (
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={approveMutation.isPending || rejectMutation.isPending}><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={approveMutation.isPending || rejectMutation.isPending} aria-label={`Actions for ${tenant.name}`}><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <AlertDialog><AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()}><Check className="mr-2 h-4 w-4" />Approve</DropdownMenuItem></AlertDialogTrigger>
                                   <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Approve Tenant?</AlertDialogTitle><AlertDialogDescription>This will activate the institution and send a notification to the admin.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => approveMutation.mutate(tenant)}>Approve</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
@@ -150,7 +150,7 @@ export default function SuperAdminDashboard() {
             </CardContent>
           </Card>
         </motion.div>
-        <motion.div className="mt-8" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+        <motion.div className="mt-8" variants={itemVariants} initial="hidden" animate="visible" transition={{ delay: 0.3 }}>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
@@ -181,8 +181,8 @@ export default function SuperAdminDashboard() {
               {isLoadingTenants && <Skeleton className="h-48 w-full" />}
               {tenantsError && <p className="text-destructive">Failed to load tenants.</p>}
               {tenants && (
-                tenants.length === 0 ? <p className="text-muted-foreground text-center py-8">No active tenants found.</p> :
-                <Table>
+                tenants.length === 0 ? <div className="text-center py-8"><Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground">No active tenants available.</p></div> :
+                <Table role="table" aria-label="Active Tenants">
                   <TableHeader><TableRow><TableHead>Institution</TableHead><TableHead>Country</TableHead><TableHead>Curriculum</TableHead><TableHead>Languages</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                   <TableBody>{tenants.map((tenant) => (<TableRow key={tenant.id}><TableCell className="font-medium">{tenant.name}</TableCell><TableCell>{tenant.country}</TableCell><TableCell>{tenant.curriculum}</TableCell><TableCell>{tenant.languages?.join(', ')}</TableCell><TableCell className="text-right"><Button variant="outline" size="sm" disabled>Manage</Button></TableCell></TableRow>))}</TableBody>
                 </Table>

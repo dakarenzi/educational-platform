@@ -61,7 +61,7 @@ export default function AnalyticsPage() {
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 mt-12">
               {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
             </div>
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7 mt-8">
+            <div className="grid gap-8 md:grid-cols-1 lg:grid-cols-7 mt-8">
               <Skeleton className="lg:col-span-4 h-[420px]" />
               <Skeleton className="lg:col-span-3 h-[420px]" />
             </div>
@@ -93,8 +93,13 @@ export default function AnalyticsPage() {
                 </motion.div>
               ))}
             </motion.div>
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7 mt-8">
-              <motion.div className="lg:col-span-4" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }}>
+            <motion.div
+              className="grid gap-8 md:grid-cols-1 lg:grid-cols-7 mt-8"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <motion.div className="lg:col-span-4" variants={itemVariants}>
                 <Card>
                   <CardHeader>
                     <CardTitle>Student Progress by Course</CardTitle>
@@ -113,14 +118,14 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
               </motion.div>
-              <motion.div className="lg:col-span-3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }}>
+              <motion.div className="lg:col-span-3" variants={itemVariants}>
                 <Card>
                   <CardHeader>
                     <CardTitle>Recent Activity</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {data.recentActivity.length > 0 ? (
-                      <Table>
+                      <Table role="table" aria-label="Recent Student Activity">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Student</TableHead>
@@ -155,7 +160,7 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
               </motion.div>
-            </div>
+            </motion.div>
           </>
         )}
       </div>
