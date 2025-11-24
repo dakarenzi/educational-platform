@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, XCircle, ArrowLeft, ArrowRight, Award } from 'lucide-react';
-import Confetti from 'react-dom-confetti';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
 import type { Quiz } from '@shared/types';
@@ -13,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
+const Confetti = (props: any) => null;
 const fetchQuiz = async (quizId: string): Promise<Quiz> => {
   return api<Quiz>(`/api/quizzes/${quizId}`);
 };
