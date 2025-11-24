@@ -1,14 +1,24 @@
 # AcademiCloud: The Illustrative Educational Platform
 An all-in-one educational platform for creating and managing courses, quizzes, and learning materials with an engaging, illustrative design.
 [cloudflarebutton]
-AcademiCloud is a comprehensive, multi-tenant educational platform built on Cloudflare's serverless infrastructure. It empowers educational institutions like schools, universities, and training centers to create, manage, and deliver engaging online learning experiences. The platform provides a suite of integrated tools including course and lesson management, interactive quizzes, flashcard decks for spaced repetition, and a placeholder for a future AI Tutor. The user interface is designed with an 'Illustrative' artistic style, featuring custom graphics, playful elements, and a human-centered design philosophy to make learning more engaging and enjoyable. The architecture is role-based, catering to the distinct needs of Admins, Teachers, and Students within each institution.
+AcademiCloud is a comprehensive, multi-tenant educational platform built on Cloudflare's serverless infrastructure. It empowers educational institutions to create, manage, and deliver engaging online learning experiences. The architecture is role-based, catering to the distinct needs of Super Admins, Admins, Teachers, and Students.
+The user interface is designed with an 'Illustrative' artistic style, featuring custom graphics and a human-centered design philosophy to make learning more engaging. All pages follow a consistent, responsive layout (`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`) with generous vertical spacing (`py-8 md:py-10 lg:py-12`).
 ## ✨ Key Features
 *   **Multi-Tenant Architecture:** Securely isolate data for each educational institution.
 *   **Role-Based Access:** Separate experiences for Super Admins, Admins, Teachers, and Students.
-*   **Course Management:** Create, manage, and browse courses with detailed lesson structures.
-*   **Interactive Quizzes & Flashcards:** Tools to build and take quizzes and study with flashcards.
-*   **Student Analytics:** A dashboard for tracking student progress, engagement, and performance.
-*   **Super Admin Dashboard:** A platform-wide view for managing tenants and monitoring analytics.
+*   **Tenant Onboarding:** A public form for new institutions to request a tenant, with a super-admin approval workflow.
+*   **Course Management:** Teachers can create, edit, delete, and manage courses with detailed lesson structures.
+*   **Interactive Learning:** Build and take quizzes, and study with fully manageable flashcard decks.
+*   **Student Progress Tracking:** A dedicated "My Progress" dashboard for students to view enrolled courses and quiz history.
+*   **AI Tutor:** An interactive chat assistant to help students with summarizing, explaining, and practice questions, with multi-language support (EN/FR).
+*   **Analytics Dashboard:** A dashboard for teachers and admins to track student progress, engagement, and performance.
+*   **Super Admin Dashboard:** A platform-wide view for managing tenants, approving requests, and monitoring analytics.
+## 🏛️ Tenant Management
+AcademiCloud is designed for scalability with a robust tenant management system:
+1.  **Request:** New institutions can apply for a tenant via the public `/request-tenant` page.
+2.  **Review:** Super Admins are notified (via console log simulation) and can review pending requests in their dashboard.
+3.  **Approve/Reject:** With a single click, Super Admins can approve or reject requests.
+4.  **Provisioning (Mocked):** Upon approval, the system simulates provisioning of tenant resources (like KV, R2, Vectorize via console logs) and sends a mock email notification to the new tenant's administrator.
 ## 🛠️ Technology Stack
 *   **Framework:** React (Vite) & Hono
 *   **Infrastructure:** Cloudflare Workers & Durable Objects
@@ -51,12 +61,14 @@ This project is designed for a two-part deployment to the Cloudflare network: th
     wrangler pages deploy dist/
     ```
 ### SaaS Configuration
-*   **Custom Domains:** For each tenant (institution), you can add a custom domain by configuring a CNAME record in your Cloudflare DNS settings to point to your Pages deployment.
-*   **Billing:** The application includes a mock Stripe integration endpoint. To implement real billing, you would need to integrate the Stripe SDK and manage API keys using Wrangler secrets (not included in this free-tier simulation).
-*   **Scalability:** The architecture uses a single Durable Object with tenant-prefixed keys for data isolation, which scales effectively for many tenants. For very large-scale relational data needs, integrating Cloudflare D1 would be the next step (not configured in this template).
-*   **Compliance & Webhooks:** The application simulates audit logs and webhooks by logging events to the console. For production, these would be integrated with a dedicated logging service and a webhook delivery system.
-*   **Internationalization (i18n):** The backend is structured to support multiple languages (EN/FR), which can be requested via API query parameters.
-## ✅ Type Safety and Readiness
-*   All TypeScript errors have been resolved for a production-ready deployment.
-*   The platform supports full multi-tenancy with a super-admin dashboard.
-*   Run `bun cf-typegen` after any changes to the worker to ensure frontend and backend types are synchronized.
+*   **Custom Domains:** For each tenant, you can add a custom domain by configuring a CNAME record in your Cloudflare DNS settings to point to your Pages deployment.
+*   **Billing:** The application includes a mock Stripe integration endpoint. To implement real billing, you would need to integrate the Stripe SDK and manage API keys using Wrangler secrets.
+*   **Scalability:** The architecture uses a single Durable Object with tenant-prefixed keys for data isolation, which scales effectively for many tenants. For very large-scale relational data needs, integrating Cloudflare D1 would be the next step.
+*   **Compliance & Webhooks:** The application simulates audit logs and webhooks by logging events to the console. For production, these would be integrated with a dedicated logging service.
+*   **Internationalization (i18n):** The backend is structured to support multiple languages (EN/FR). The AI Tutor feature demonstrates this with a language toggle.
+## ✅ Production Checklist
+Before going live, ensure the following:
+1.  **Type Generation:** Run `bun cf-typegen` after any changes to the worker to ensure frontend and backend types are synchronized.
+2.  **Type Safety:** Verify the project builds without any TypeScript errors (`bun build`).
+3.  **Role Testing:** Log in with each user role (Student, Teacher, Admin, Super Admin) and test all accessible routes and features to ensure permissions are correctly enforced.
+4.  **Review Environment Variables:** For a real deployment, configure secrets for any third-party services (e.g., Stripe) using `wrangler secret put`.
