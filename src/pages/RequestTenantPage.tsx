@@ -3,9 +3,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useMutation } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import Confetti from 'react-dom-confetti';
+
 import { GraduationCap, Loader2, Send } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import type { PendingTenant } from '@shared/types';
@@ -16,6 +16,28 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ThemeToggle } from '@/components/ThemeToggle';
+
+const Confetti = ({ active, config }: { active?: boolean; config?: any }) => {
+  if (!active) return null;
+  // Lightweight inline SVG fallback that preserves the Confetti({ active, config }) signature.
+  // Renders a simple non-animated SVG so bundler doesn't require 'react-dom-confetti'.
+  return (
+    <svg
+      width="240"
+      height="120"
+      viewBox="0 0 240 120"
+      fill="none"
+      aria-hidden
+      className="pointer-events-none"
+    >
+      <rect x="20" y="20" width="6" height="6" fill="#ef4444" />
+      <rect x="60" y="40" width="6" height="6" fill="#f59e0b" />
+      <rect x="100" y="10" width="6" height="6" fill="#10b981" />
+      <rect x="140" y="30" width="6" height="6" fill="#3b82f6" />
+      <rect x="180" y="50" width="6" height="6" fill="#a78bfa" />
+    </svg>
+  );
+};
 const languages = [
   { id: 'en', label: 'English' },
   { id: 'fr', label: 'French' },
@@ -23,7 +45,7 @@ const languages = [
 const requestTenantSchema = z.object({
   name: z.string().min(3, 'Institution name must be at least 3 characters.'),
   country: z.string().min(2, 'Please select a country.'),
-  curriculum: z.enum(['Senegal', 'Côte d\'Ivoire', 'AEFE', 'US'], { required_error: 'Please select a curriculum.' }),
+  curriculum: z.enum(['Senegal', "Côte d'Ivoire", 'AEFE', 'US'] as const),
   languages: z.array(z.string()).refine((value) => value.some((item) => item), {
     message: 'You have to select at least one language.',
   }),

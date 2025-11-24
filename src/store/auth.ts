@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useSyncExternalStore } from 'react';
 import type { User } from '@shared/types';
 
 interface AuthState {
@@ -109,41 +109,27 @@ state = {
 // Ensure persisted state is saved in case defaults differ
 persist(state);
 
-// Exported hook
-export function useAuthStore<T>(selector: (s: AuthState) => T): T {
-  // Keep a stable ref to the latest selector so the subscription effect
-  // doesn't depend on the selector identity.
-  const selectorRef = useRef(selector);
-
-  // Initialize with the current selector applied to store state.
-  const [selected, setSelected] = useState(() => selectorRef.current(getState()));
-
-  // Update the selectorRef whenever a new selector is provided.
-  useEffect(() => {
-    selectorRef.current = selector;
-  }, [selector]);
-
-  // Subscribe on mount only. The handler reads selectorRef.current so it
-  // always uses the latest selector without re-subscribing.
-  useEffect(() => {
-    const handleChange = () => {
-      try {
-        const newSelected = selectorRef.current(getState());
-        // Only update if the selected value actually changed.
-        setSelected((prev) => (Object.is(prev, newSelected) ? prev : newSelected));
-      } catch {
-        // swallow selector errors to avoid breaking components
-      }
-    };
-
-    const unsubscribe = subscribe(handleChange);
-    // Ensure we capture any state changes that occurred between render and effect
-    handleChange();
-    return unsubscribe;
-  }, []);
-
-  return selected;
-}
+ // Exported hook using useSyncExternalStore for stable subscriptions
+ export function useAuthStore<T>(selector: (s: AuthState) => T): T {
+   return useSyncExternalStore(
+     subscribe,
+     () => {
+       try {
+         return selector(getState());
+       } catch {
+         // swallow selector errors to avoid breaking components
+         return undefined as any as T;
+       }
+     },
+     () => {
+       try {
+         return selector(getState());
+       } catch {
+         return undefined as any as T;
+       }
+     }
+   );
+ }
 
 // Expose getState on the hook for parity with prior API
 // (useAuthStore as any).getState will be available to consumers
