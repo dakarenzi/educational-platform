@@ -72,6 +72,9 @@ export default function TeacherMockExamsPage() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete exam.'),
   });
+  const onSubmit = (values: MockExamFormValues) => {
+    createMutation.mutate(values);
+  };
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
@@ -100,7 +103,7 @@ export default function TeacherMockExamsPage() {
               <DialogDescription>Fill in the details for your practice exam.</DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit((values) => createMutation.mutate(values))} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="title"
