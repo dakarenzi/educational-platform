@@ -1,97 +1,58 @@
 # AcademiCloud: The Illustrative Educational Platform
-
 An all-in-one educational platform for creating and managing courses, quizzes, and learning materials with an engaging, illustrative design.
-
 [cloudflarebutton]
-
 AcademiCloud is a comprehensive, multi-tenant educational platform built on Cloudflare's serverless infrastructure. It empowers educational institutions like schools, universities, and training centers to create, manage, and deliver engaging online learning experiences. The platform provides a suite of integrated tools including course and lesson management, interactive quizzes, flashcard decks for spaced repetition, and a placeholder for a future AI Tutor. The user interface is designed with an 'Illustrative' artistic style, featuring custom graphics, playful elements, and a human-centered design philosophy to make learning more engaging and enjoyable. The architecture is role-based, catering to the distinct needs of Admins, Teachers, and Students within each institution.
-
 ## ✨ Key Features
-
-*   **Role-Based Access:** Separate experiences for Admins, Teachers, and Students.
+*   **Multi-Tenant Architecture:** Securely isolate data for each educational institution.
+*   **Role-Based Access:** Separate experiences for Super Admins, Admins, Teachers, and Students.
 *   **Course Management:** Create, manage, and browse courses with detailed lesson structures.
-*   **Interactive Quizzes:** Build and take quizzes to assess learning and comprehension.
-*   **Flashcard Decks:** A tool for creating and studying with digital flashcards to reinforce knowledge.
+*   **Interactive Quizzes & Flashcards:** Tools to build and take quizzes and study with flashcards.
 *   **Student Analytics:** A dashboard for tracking student progress, engagement, and performance.
-*   **AI Tutor (Placeholder):** A foundation for a future conversational AI learning assistant.
-*   **Illustrative & Engaging UI:** A beautiful, modern interface designed to make learning enjoyable.
-
+*   **Super Admin Dashboard:** A platform-wide view for managing tenants and monitoring analytics.
 ## 🛠️ Technology Stack
-
 *   **Framework:** React (Vite) & Hono
 *   **Infrastructure:** Cloudflare Workers & Durable Objects
 *   **Styling:** Tailwind CSS & shadcn/ui
 *   **State Management:** Zustand (UI State) & TanStack Query (Server State)
 *   **Routing:** React Router
-*   **Animations:** Framer Motion
 *   **Language:** TypeScript
 *   **Schema Validation:** Zod
-
 ## 🚀 Getting Started
-
-Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
-
 ### Prerequisites
-
-Make sure you have the following tools installed:
-
 *   [Bun](https://bun.sh/) (v1.0 or higher)
-*   [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) (Cloudflare's CLI tool)
-
+*   [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/)
 ### Installation
-
-1.  **Clone the repository:**
+1.  **Clone the repository and install dependencies:**
     ```sh
     git clone <YOUR_REPOSITORY_URL>
     cd academcloud_educational_platform
-    ```
-
-2.  **Install dependencies:**
-    This project uses Bun for package management.
-    ```sh
     bun install
     ```
-
-### Running the Development Server
-
-To start the local development server, which includes the Vite frontend and the Hono backend worker, run:
-
+2.  **Generate Worker Types:**
+    ```sh
+    bun cf-typegen
+    ```
+### Running Locally
+To start the local development server, which includes the Vite frontend and the Hono backend worker:
 ```sh
 bun dev
 ```
-
-This will start the application, typically on `http://localhost:3000`. The command concurrently runs the Vite dev server and a local instance of the Cloudflare Worker.
-
-## 📂 Project Structure
-
-The codebase is organized into three main directories:
-
-*   `src/`: Contains the frontend React application, including pages, components, hooks, and utility functions.
-*   `worker/`: Contains the backend Cloudflare Worker code, built with Hono. This is where API routes and data entities are defined.
-*   `shared/`: Contains shared code, primarily TypeScript types, that are used by both the frontend and the backend to ensure type safety.
-
-## 💻 Development
-
-*   **Backend:** Add new API endpoints in `worker/user-routes.ts`. Define new data structures and logic in `worker/entities.ts`, following the provided `IndexedEntity` pattern for interacting with the global Durable Object.
-*   **Frontend:** Create new pages in `src/pages/` and reusable components in `src/components/`. Use the `api()` function in `src/lib/api-client.ts` to communicate with the backend.
-*   **Styling:** Leverage the pre-configured `shadcn/ui` components and use Tailwind CSS for custom styling and layout.
-
-## ☁️ Deployment
-
-This project is designed for seamless deployment to the Cloudflare network.
-
-1.  **Build the application:**
-    This command bundles the frontend and worker code for production.
+## ☁️ Deployment as a SaaS
+This project is designed for a two-part deployment to the Cloudflare network: the backend API on Workers and the frontend on Pages.
+1.  **Deploy the Backend API:**
+    The Hono backend is deployed as a Cloudflare Worker. This command builds and deploys the code in the `worker/` directory.
     ```sh
-    bun build
+    bun run deploy
     ```
-
-2.  **Deploy to Cloudflare:**
-    This command publishes your application to your Cloudflare account.
+2.  **Deploy the Frontend Application:**
+    The React frontend is deployed to Cloudflare Pages. This command first builds the static assets into the `dist/` directory, then deploys them.
     ```sh
-    bun deploy
+    # This command is an example. You can also set up Git integration for automatic deployments.
+    wrangler pages deploy dist/
     ```
-
-Alternatively, you can deploy directly from your GitHub repository using the button below.
-
-[cloudflarebutton]
+### SaaS Configuration
+*   **Custom Domains:** For each tenant (institution), you can add a custom domain by configuring a CNAME record in your Cloudflare DNS settings to point to your Pages deployment.
+*   **Billing:** The application includes a mock Stripe integration endpoint. To implement real billing, you would need to integrate the Stripe SDK and manage API keys using Wrangler secrets (not included in this free-tier simulation).
+*   **Scalability:** The architecture uses a single Durable Object with tenant-prefixed keys for data isolation, which scales effectively for many tenants. For very large-scale relational data needs, integrating Cloudflare D1 would be the next step (not configured in this template).
+*   **Compliance & Webhooks:** The application simulates audit logs and webhooks by logging events to the console. For production, these would be integrated with a dedicated logging service and a webhook delivery system.
+*   **Internationalization (i18n):** The backend is structured to support multiple languages (EN/FR), which can be requested via API query parameters.

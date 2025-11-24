@@ -9,6 +9,7 @@ import {
   Sparkles,
   PenSquare,
   ClipboardCheck,
+  Shield,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -34,6 +35,9 @@ const studentNavItems = [
 const teacherNavItems = [
     { to: '/app/teacher/dashboard', icon: PenSquare, label: 'Teacher Tools' },
 ];
+const superAdminNavItems = [
+    { to: '/app/super-admin', icon: Shield, label: 'Super Admin' },
+];
 const fetchInstitution = async (): Promise<Institution> => {
   return api<Institution>('/api/institution');
 };
@@ -54,7 +58,8 @@ export function AcademiCloudSidebar() {
   };
   const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
   const isStudent = user?.role === 'student';
-  const visibleNavItems = navItems.filter(item => !item.roles || item.roles.includes(user!.role));
+  const isSuperAdmin = user?.role === 'super-admin';
+  const visibleNavItems = navItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
   return (
     <aside className="hidden md:flex flex-col w-64 bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
       <div className="p-4 border-b border-sidebar-border flex items-center gap-3">
@@ -118,6 +123,32 @@ export function AcademiCloudSidebar() {
             <>
               <Separator className="my-2 bg-sidebar-border" />
               {teacherNavItems.map((item) => (
+                <Tooltip key={item.label}>
+                  <TooltipTrigger asChild>
+                    <NavLink
+                      to={item.to}
+                      className={({ isActive }) =>
+                        cn(
+                          'flex items-center gap-3 rounded-lg px-3 py-2 text-sidebar-foreground transition-all hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+                          isActive && 'bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground'
+                        )
+                      }
+                    >
+                      <item.icon className="h-5 w-5" />
+                      <span>{item.label}</span>
+                    </NavLink>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>{item.label}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </>
+          )}
+          {isSuperAdmin && (
+            <>
+              <Separator className="my-2 bg-sidebar-border" />
+              {superAdminNavItems.map((item) => (
                 <Tooltip key={item.label}>
                   <TooltipTrigger asChild>
                     <NavLink

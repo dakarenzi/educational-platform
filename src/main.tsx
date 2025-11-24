@@ -25,6 +25,7 @@ import AnalyticsPage from '@/pages/AnalyticsPage';
 import QuizCreatorPage from '@/pages/QuizCreatorPage';
 import QuizTakerPage from '@/pages/QuizTakerPage';
 import MyProgressPage from '@/pages/student/MyProgressPage';
+import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 // Teacher Tools
 import { TeacherLayout } from '@/components/layout/TeacherLayout';
 import TeacherDashboardPage from '@/pages/teacher/TeacherDashboardPage';
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
         { path: "tutor", element: <TutorPage /> },
         { path: "analytics", element: <AnalyticsPage /> },
         { path: "my-progress", element: <MyProgressPage /> },
+        { path: "super-admin", element: <SuperAdminDashboard /> },
         {
           path: "teacher",
           element: <TeacherLayout />,
