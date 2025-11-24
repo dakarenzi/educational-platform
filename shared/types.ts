@@ -95,11 +95,7 @@ export interface PendingTenant {
   rejectedAt?: string;
   notes?: string;
 }
-
-export interface MockExamQuestion extends QuizQuestion {
-  // Inherits from QuizQuestion, no additional fields needed
-}
-
+export type MockExamQuestion = QuizQuestion;
 export interface MockExamSubmission {
   id: string; // e.g., `${studentId}-${examId}-${attemptId}`
   tenantId: string;
@@ -110,7 +106,6 @@ export interface MockExamSubmission {
   submittedAt: string; // ISO date
   answers?: Record<number, number>; // Optional: for detailed review
 }
-
 export interface MockExam {
   id: string;
   tenantId: string;

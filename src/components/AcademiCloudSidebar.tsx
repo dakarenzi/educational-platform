@@ -17,19 +17,19 @@ import { motion } from 'framer-motion';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api-client';
-import type { Institution } from '@shared/types';
+import type { Institution, UserRole } from '@shared/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-const navItems = [
+const navItems: { to: string; icon: React.ElementType; label: string; roles?: UserRole[] }[] = [
   { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/app/courses', icon: Book, label: 'Courses' },
   { to: '/app/flashcards', icon: Presentation, label: 'Flashcards' },
   { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
   { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
-  { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams' },
+  { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams', roles: ['admin', 'teacher', 'student'] },
 ];
 const studentNavItems = [
     { to: '/app/my-progress', icon: ClipboardCheck, label: 'My Progress' },
