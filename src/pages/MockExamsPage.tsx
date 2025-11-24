@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ClipboardList, Clock, CheckCircle } from 'lucide-react';
+import { ClipboardList, Clock, CheckCircle, PlusCircle } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import type { MockExam } from '@shared/types';
 import { useAuthStore } from '@/store/auth';
@@ -27,12 +27,23 @@ export default function MockExamsPage() {
   const hasTakenExam = (exam: MockExam) => {
     return exam.submissions?.some(s => s.studentId === user?.id);
   };
+  const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 md:py-10 lg:py-12">
-        <div className="mb-12">
-          <h1 className="text-4xl font-bold font-display text-foreground">Mock Exams</h1>
-          <p className="mt-2 text-lg text-muted-foreground">Test your knowledge with our practice exams.</p>
+        <div className="flex flex-wrap justify-between items-center gap-4 mb-12">
+          <div>
+            <h1 className="text-4xl font-bold font-display text-foreground">Mock Exams</h1>
+            <p className="mt-2 text-lg text-muted-foreground">Test your knowledge with our practice exams.</p>
+          </div>
+          {isTeacherOrAdmin && (
+            <Button asChild>
+              <Link to="/app/teacher/mock-exams">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Manage Exams
+              </Link>
+            </Button>
+          )}
         </div>
         {isLoading && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -47,7 +58,11 @@ export default function MockExamsPage() {
             <div className="text-center py-16 border-2 border-dashed rounded-lg">
               <ClipboardList className="mx-auto h-12 w-12 text-muted-foreground" />
               <h3 className="mt-4 text-xl font-semibold">No Mock Exams Available</h3>
-              <p className="text-muted-foreground mt-2">Please check back later, or ask your teacher to create one.</p>
+              <p className="text-muted-foreground mt-2">
+                {isTeacherOrAdmin
+                  ? "You haven't created any exams yet. Click 'Manage Exams' to get started."
+                  : "Please check back later, or ask your teacher to create one."}
+              </p>
             </div>
           ) : (
             <motion.div
