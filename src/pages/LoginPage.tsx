@@ -1,6 +1,5 @@
 import { BookOpen, GraduationCap, UserCog, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -59,25 +58,27 @@ export default function LoginPage() {
         </p>
       </div>
       <div>
-        <Card className="w-full max-w-md mx-auto shadow-xl">
+        <Card className="w-full max-w-md mx-auto md:max-w-lg shadow-xl overflow-hidden">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Select Your Role</CardTitle>
             <CardDescription>Choose how you'd like to sign in.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 overflow-hidden">
             {(['student', 'teacher', 'admin', 'super-admin'] as UserRole[]).map((role) => {
               const Icon = roleData[role].icon;
               return (
                 <Button
                   key={role}
                   onClick={() => handleLogin(role)}
-                  className="w-full h-auto py-4 justify-start text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:bg-primary/10"
+                  className="w-full h-auto min-h-[80px] py-4 justify-start text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:bg-primary/10"
                   variant="outline"
                 >
                   <Icon className="w-8 h-8 mr-4 text-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex flex-col">
                     <p className="font-semibold text-base">{roleData[role].title}</p>
-                    <p className="text-sm text-muted-foreground">{roleData[role].description}</p>
+                    <p className="text-sm text-muted-foreground whitespace-normal">
+                      {roleData[role].description}
+                    </p>
                   </div>
                 </Button>
               );
