@@ -60,7 +60,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const pending = await pendingEntity.getState();
     if (pending.status !== 'pending') return bad(c, 'Tenant request is not in pending state.');
     pending.status = 'approved';
-    pending.approvedAt = new new Date().toISOString();
+    pending.approvedAt = new Date().toISOString();
     await pendingEntity.save(pending);
     const newInstitution: Institution = {
       id: `inst-${pending.id.substring(0, 8)}`,
