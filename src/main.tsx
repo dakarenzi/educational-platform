@@ -14,6 +14,7 @@ import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import '@/index.css'
 // Pages
 import LoginPage from '@/pages/LoginPage';
+import RequestTenantPage from '@/pages/RequestTenantPage';
 import { AppLayout } from '@/components/layout/AppLayout';
 import DashboardPage from '@/pages/HomePage';
 import CoursesPage from '@/pages/CoursesPage';
@@ -36,6 +37,11 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <LoginPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/request-tenant",
+    element: <RequestTenantPage />,
     errorElement: <RouteErrorBoundary />,
   },
   {

@@ -6,6 +6,7 @@ export interface ApiResponse<T = unknown> {
 export interface Institution {
   id: string;
   name: string;
+  approvedFromRequest?: string;
 }
 export type UserRole = 'admin' | 'teacher' | 'student' | 'super-admin';
 export interface User {
@@ -75,4 +76,18 @@ export interface QuizSubmission {
   studentId: string;
   score: number; // Percentage score
   submittedAt: string; // ISO 8601 date string
+}
+export interface PendingTenant {
+  id: string;
+  name: string;
+  country: string;
+  curriculum: string;
+  languages: string[];
+  adminEmail: string;
+  status: 'pending' | 'approved' | 'rejected';
+  verificationDomain?: string;
+  requestedAt: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  notes?: string;
 }
