@@ -8,9 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Link } from 'react-router-dom';
 interface RecentActivity {
   student: string;
   course: string;
+  courseId: string;
   activity: string;
   score: string;
   submittedAt: string;
@@ -55,11 +57,17 @@ export default function AnalyticsPage() {
           <p className="mt-2 text-lg text-muted-foreground">An overview of platform engagement and student performance.</p>
         </motion.div>
         {isLoading && (
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 mt-12">
-            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
-          </div>
+          <>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 mt-12">
+              {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-28 w-full" />)}
+            </div>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7 mt-8">
+              <Skeleton className="lg:col-span-4 h-[420px]" />
+              <Skeleton className="lg:col-span-3 h-[420px]" />
+            </div>
+          </>
         )}
-        {error && <p className="text-destructive mt-12">Failed to load analytics data. Please try again later.</p>}
+        {error && <p className="text-destructive mt-12 text-center">Failed to load analytics data. Please try again later.</p>}
         {data && (
           <>
             <motion.div
@@ -111,30 +119,39 @@ export default function AnalyticsPage() {
                     <CardTitle>Recent Activity</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Student</TableHead>
-                          <TableHead>Activity</TableHead>
-                          <TableHead className="text-right">Time</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {data.recentActivity.map((activity, index) => (
-                          <TableRow key={index}>
-                            <TableCell className="font-medium">{activity.student}</TableCell>
-                            <TableCell>
-                              <Badge variant={activity.activity.includes('Failed') ? 'destructive' : 'success'}>
-                                {activity.activity}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right text-muted-foreground text-sm">
-                              {formatDistanceToNow(new Date(activity.submittedAt), { addSuffix: true })}
-                            </TableCell>
+                    {data.recentActivity.length > 0 ? (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Student</TableHead>
+                            <TableHead>Activity</TableHead>
+                            <TableHead className="text-right">Time</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {data.recentActivity.map((activity, index) => (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <div className="font-medium">{activity.student}</div>
+                                <Link to={`/app/courses/${activity.courseId}`} className="text-xs text-muted-foreground hover:underline">{activity.course}</Link>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={activity.activity.includes('Failed') ? 'destructive' : 'success'}>
+                                  {activity.activity}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground text-sm">
+                                {formatDistanceToNow(new Date(activity.submittedAt), { addSuffix: true })}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        <p>No recent student activity.</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </motion.div>

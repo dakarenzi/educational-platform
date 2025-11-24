@@ -55,8 +55,8 @@ export default function SuperAdminDashboard() {
       headers: { 'X-Mock-Role': 'super-admin' },
       body: JSON.stringify({ ...newTenant, adminEmail: '' }),
     }),
-    onSuccess: () => {
-      toast.success('Tenant created successfully!');
+    onSuccess: (_, variables) => {
+      toast.success(`Tenant "${variables.name}" created successfully!`);
       queryClient.invalidateQueries({ queryKey: ['super-admin-tenants'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin-analytics'] });
       setCreateDialogOpen(false);
@@ -68,9 +68,9 @@ export default function SuperAdminDashboard() {
   const { data: analytics, isLoading: isLoadingAnalytics, error: analyticsError } = useQuery({ queryKey: ['super-admin-analytics'], queryFn: fetchAnalytics });
   const { data: pendingTenants, isLoading: isLoadingPending, error: pendingError } = useQuery({ queryKey: ['super-admin-pending-tenants'], queryFn: fetchPendingTenants });
   const approveMutation = useMutation({
-    mutationFn: (id: string) => api(`/api/super-admin/pending-tenants/${id}/approve`, { method: 'PUT', headers: { 'X-Mock-Role': 'super-admin' } }),
-    onSuccess: () => {
-      toast.success('Tenant approved and activated!');
+    mutationFn: (tenant: PendingTenant) => api(`/api/super-admin/pending-tenants/${tenant.id}/approve`, { method: 'PUT', headers: { 'X-Mock-Role': 'super-admin' } }),
+    onSuccess: (_, tenant) => {
+      toast.success(`Tenant "${tenant.name}" approved and activated!`);
       queryClient.invalidateQueries({ queryKey: ['super-admin-pending-tenants'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin-tenants'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin-analytics'] });
@@ -78,9 +78,9 @@ export default function SuperAdminDashboard() {
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to approve tenant.'),
   });
   const rejectMutation = useMutation({
-    mutationFn: (id: string) => api(`/api/super-admin/pending-tenants/${id}/reject`, { method: 'PUT', headers: { 'X-Mock-Role': 'super-admin' }, body: JSON.stringify({ notes: 'Rejected by admin.' }) }),
-    onSuccess: () => {
-      toast.info('Tenant request rejected.');
+    mutationFn: (tenant: PendingTenant) => api(`/api/super-admin/pending-tenants/${tenant.id}/reject`, { method: 'PUT', headers: { 'X-Mock-Role': 'super-admin' }, body: JSON.stringify({ notes: 'Rejected by admin.' }) }),
+    onSuccess: (_, tenant) => {
+      toast.info(`Tenant request for "${tenant.name}" rejected.`);
       queryClient.invalidateQueries({ queryKey: ['super-admin-pending-tenants'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to reject tenant.'),
@@ -130,13 +130,13 @@ export default function SuperAdminDashboard() {
                         <TableCell className="text-right">
                           {tenant.status === 'pending' && (
                             <DropdownMenu>
-                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={approveMutation.isPending || rejectMutation.isPending}><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <AlertDialog><AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()}><Check className="mr-2 h-4 w-4" />Approve</DropdownMenuItem></AlertDialogTrigger>
-                                  <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Approve Tenant?</AlertDialogTitle><AlertDialogDescription>This will activate the institution and send a notification to the admin.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => approveMutation.mutate(tenant.id)}>Approve</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                                  <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Approve Tenant?</AlertDialogTitle><AlertDialogDescription>This will activate the institution and send a notification to the admin.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => approveMutation.mutate(tenant)}>Approve</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
                                 </AlertDialog>
                                 <AlertDialog><AlertDialogTrigger asChild><DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive"><X className="mr-2 h-4 w-4" />Reject</DropdownMenuItem></AlertDialogTrigger>
-                                  <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Reject Tenant?</AlertDialogTitle><AlertDialogDescription>This will reject the request. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => rejectMutation.mutate(tenant.id)} className="bg-destructive hover:bg-destructive/90">Reject</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+                                  <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Reject Tenant?</AlertDialogTitle><AlertDialogDescription>This will reject the request. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => rejectMutation.mutate(tenant)} className="bg-destructive hover:bg-destructive/90">Reject</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
                                 </AlertDialog>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -181,6 +181,7 @@ export default function SuperAdminDashboard() {
               {isLoadingTenants && <Skeleton className="h-48 w-full" />}
               {tenantsError && <p className="text-destructive">Failed to load tenants.</p>}
               {tenants && (
+                tenants.length === 0 ? <p className="text-muted-foreground text-center py-8">No active tenants found.</p> :
                 <Table>
                   <TableHeader><TableRow><TableHead>Institution</TableHead><TableHead>Country</TableHead><TableHead>Curriculum</TableHead><TableHead>Languages</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                   <TableBody>{tenants.map((tenant) => (<TableRow key={tenant.id}><TableCell className="font-medium">{tenant.name}</TableCell><TableCell>{tenant.country}</TableCell><TableCell>{tenant.curriculum}</TableCell><TableCell>{tenant.languages?.join(', ')}</TableCell><TableCell className="text-right"><Button variant="outline" size="sm" disabled>Manage</Button></TableCell></TableRow>))}</TableBody>

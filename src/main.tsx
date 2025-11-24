@@ -68,7 +68,6 @@ const router = createBrowserRouter([
         { path: "mock-exams/:examId", element: <MockExamTakerPage /> },
         { path: "resources", element: <ResourcesPage /> },
         { path: "my-progress", element: <MyProgressPage /> },
-        // Super-admin route with role check handled in the component/layout
         { path: "super-admin", element: <SuperAdminDashboard /> },
         {
           path: "teacher",
