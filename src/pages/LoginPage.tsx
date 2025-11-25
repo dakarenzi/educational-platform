@@ -1,50 +1,65 @@
-import { BookOpen, GraduationCap, UserCog, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useAuthStore } from '@/store/auth';
-import type { UserRole } from '@shared/types';
-const roleData: Record<UserRole, { icon: React.ElementType; title: string; description: string }> = {
-  student: {
-    icon: GraduationCap,
-    title: 'Student',
-    description: 'Access courses, take quizzes, and track your progress.',
-  },
-  teacher: {
-    icon: BookOpen,
-    title: 'Teacher',
-    description: 'Create courses, manage lessons, and view analytics.',
-  },
-  admin: {
-    icon: UserCog,
-    title: 'Admin',
-    description: 'Manage the platform, users, and institutional settings.',
-  },
-  'super-admin': {
-    icon: Shield,
-    title: 'Super Admin',
-    description: 'Manage platform-wide tenants and analytics.',
-  },
-};
+import { api } from '@/lib/api-client';
+import type { LoginResponse, RegisterRequest } from '@shared/types';
+const loginSchema = z.object({
+  email: z.string().email('Invalid email address.'),
+  password: z.string().min(1, 'Password is required.'),
+});
+const registerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters.'),
+  email: z.string().email('Invalid email address.'),
+  password: z.string().min(8, 'Password must be at least 8 characters.'),
+});
+type LoginFormValues = z.infer<typeof loginSchema>;
+type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function LoginPage() {
   const navigate = useNavigate();
-  const login = useAuthStore(s => s.login);
-  const handleLogin = (role: UserRole) => {
-    // In a real app, this would involve an API call. Here we mock it.
-    const mockUser = {
-      id: `user-${role}-1`,
-      tenantId: 'inst-1', // Add tenantId to satisfy the User type
-      name: `Mock ${role.charAt(0).toUpperCase() + role.slice(1)}`,
-      role: role,
-    };
-    login(mockUser);
-    if (role === 'super-admin') {
-        navigate('/app/super-admin');
-    } else {
-        navigate('/app/dashboard');
-    }
-  };
+  const login = useAuthStore.getState().login;
+  const loginForm = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
+  const registerForm = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: { name: '', email: '', password: '' },
+  });
+  const loginMutation = useMutation({
+    mutationFn: (data: LoginFormValues) => api<LoginResponse>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    onSuccess: (data) => {
+      login(data.user, data.token);
+      toast.success(`Welcome back, ${data.user.name}!`);
+      navigate(data.user.role === 'super-admin' ? '/app/super-admin' : '/app/dashboard');
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Login failed.'),
+  });
+  const registerMutation = useMutation({
+    mutationFn: (data: RegisterFormValues) => api<LoginResponse>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    onSuccess: (data) => {
+      login(data.user, data.token);
+      toast.success(`Welcome, ${data.user.name}! Your account has been created.`);
+      navigate('/app/dashboard');
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Registration failed.'),
+  });
   return (
     <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
       <ThemeToggle className="absolute top-6 right-6" />
@@ -57,35 +72,63 @@ export default function LoginPage() {
           The illustrative educational platform to create, manage, and deliver engaging online learning experiences.
         </p>
       </div>
-      <div>
-        <Card className="w-full max-w-md mx-auto md:max-w-lg shadow-xl overflow-hidden">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Select Your Role</CardTitle>
-            <CardDescription>Choose how you'd like to sign in.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 overflow-hidden">
-            {(['student', 'teacher', 'admin', 'super-admin'] as UserRole[]).map((role) => {
-              const Icon = roleData[role].icon;
-              return (
-                <Button
-                  key={role}
-                  onClick={() => handleLogin(role)}
-                  className="w-full h-auto min-h-[80px] py-4 justify-start text-left transition-all duration-200 hover:shadow-lg hover:-translate-y-1 hover:bg-primary/10"
-                  variant="outline"
-                >
-                  <Icon className="w-8 h-8 mr-4 text-primary flex-shrink-0" />
-                  <div className="flex-1 min-w-0 flex flex-col">
-                    <p className="font-semibold text-base">{roleData[role].title}</p>
-                    <p className="text-sm text-muted-foreground whitespace-normal">
-                      {roleData[role].description}
-                    </p>
-                  </div>
-                </Button>
-              );
-            })}
-          </CardContent>
-        </Card>
-      </div>
+      <Tabs defaultValue="login" className="w-full max-w-md">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="login">Login</TabsTrigger>
+          <TabsTrigger value="register">Register</TabsTrigger>
+        </TabsList>
+        <TabsContent value="login">
+          <Card>
+            <CardHeader>
+              <CardTitle>Login</CardTitle>
+              <CardDescription>Enter your credentials to access your account.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
+                  <FormField control={loginForm.control} name="email" render={({ field }) => (
+                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={loginForm.control} name="password" render={({ field }) => (
+                    <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                    {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Login
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="register">
+          <Card>
+            <CardHeader>
+              <CardTitle>Register</CardTitle>
+              <CardDescription>Create a new student account.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...registerForm}>
+                <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} className="space-y-4">
+                  <FormField control={registerForm.control} name="name" render={({ field }) => (
+                    <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={registerForm.control} name="email" render={({ field }) => (
+                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={registerForm.control} name="password" render={({ field }) => (
+                    <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                    {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create Account
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
       <footer className="absolute bottom-6 text-center text-muted-foreground/80 text-sm">
         <p>Built with ❤️ at Cloudflare</p>
       </footer>

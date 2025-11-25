@@ -1,7 +1,6 @@
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { v4 as uuidv4 } from 'uuid';
 import { Loader2, PlusCircle, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -9,15 +8,14 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Quiz } from '@shared/types';
+const generateId = () =>
+  typeof globalThis !== 'undefined' && typeof (globalThis as any).crypto?.randomUUID === 'function'
+    ? (globalThis as any).crypto.randomUUID()
+    : Math.random().toString(36).slice(2);
 const questionSchema = z.object({
   id: z.string(),
   text: z.string().min(5, 'Question text must be at least 5 characters.'),
-  options: z.tuple([
-    z.string().min(1, 'Option cannot be empty.'),
-    z.string().min(1, 'Option cannot be empty.'),
-    z.string().min(1, 'Option cannot be empty.'),
-    z.string().min(1, 'Option cannot be empty.'),
-  ]),
+  options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4),
   correctAnswer: z.number().int().min(0).max(3),
 });
 const quizFormSchema = z.object({
@@ -34,10 +32,10 @@ export function QuizForm({ onSubmit, isLoading = false, initialData }: QuizFormP
   const form = useForm<QuizFormValues>({
     resolver: zodResolver(quizFormSchema),
     defaultValues: initialData
-      ? { title: initialData.title, questions: initialData.questions?.map(q => ({...q, options: q.options as [string, string, string, string]})) }
+      ? { title: initialData.title, questions: initialData.questions?.map(q => ({ id: q.id ?? generateId(), ...q, options: q.options as string[] })) }
       : {
           title: '',
-          questions: [{ id: uuidv4(), text: '', options: ['', '', '', ''], correctAnswer: 0 }],
+          questions: [{ id: generateId(), text: '', options: ['', '', '', ''], correctAnswer: 0 }],
         },
   });
   const { fields, append, remove } = useFieldArray({
@@ -95,7 +93,18 @@ export function QuizForm({ onSubmit, isLoading = false, initialData }: QuizFormP
                               control={form.control}
                               name={`questions.${index}.options.${optIndex}`}
                               render={({ field: optField }) => (
-                                <FormItem className="flex-1"><FormControl><Input {...optField} /></FormControl><FormMessage /></FormItem>
+                                <FormItem className="flex-1">
+                                  <FormControl>
+                                    <Input
+                                      value={optField.value as string}
+                                      onChange={(e) => optField.onChange(e.target.value)}
+                                      onBlur={optField.onBlur}
+                                      name={optField.name}
+                                      ref={optField.ref}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
                               )}
                             />
                           </div>
@@ -110,7 +119,7 @@ export function QuizForm({ onSubmit, isLoading = false, initialData }: QuizFormP
           ))}
         </div>
         <div className="flex justify-between">
-          <Button type="button" variant="outline" onClick={() => append({ id: uuidv4(), text: '', options: ['', '', '', ''], correctAnswer: 0 })}>
+          <Button type="button" variant="outline" onClick={() => append({ id: generateId(), text: '', options: ['', '', '', ''], correctAnswer: 0 })}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Question
           </Button>
           <Button type="submit" disabled={isLoading}>

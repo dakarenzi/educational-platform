@@ -17,8 +17,10 @@ export interface User {
   id: string;
   tenantId: string;
   name: string;
+  email?: string;
   role: UserRole;
   avatarUrl?: string;
+  passwordHash?: string;
 }
 export interface SuperAdminUser extends User {
   role: 'super-admin';
@@ -128,4 +130,22 @@ export interface Resource {
   creatorId: string;
   downloads: number;
   createdAt: string;
+}
+// Auth Types
+export interface LoginResponse {
+  token: string;
+  user: Omit<User, 'passwordHash'>;
+}
+export interface RegisterRequest {
+  email: string;
+  password: string;
+  name?: string;
+  role?: UserRole;
+}
+export interface JWTPayload {
+  userId: string;
+  tenantId: string;
+  role: UserRole;
+  iat: number;
+  exp: number;
 }

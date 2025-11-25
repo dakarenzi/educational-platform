@@ -2,14 +2,100 @@ import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
 import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
     userRole: UserRole;
+    userId: string;
   };
 };
+// --- JWT & Crypto Helpers ---
+const base64UrlEncode = (data: ArrayBuffer): string =>
+  btoa(String.fromCharCode(...new Uint8Array(data))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const base64UrlDecode = (str: string): ArrayBuffer => {
+  const base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const binStr = atob(base64);
+  const len = binStr.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binStr.charCodeAt(i);
+  }
+  return bytes.buffer;
+};
+const getSigningKey = async (secret: string): Promise<CryptoKey> => {
+  const encoder = new TextEncoder();
+  return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+};
+const signJWT = async (payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: string, expiresInSeconds: number = 3600): Promise<string> => {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const now = Math.floor(Date.now() / 1000);
+  const fullPayload: JWTPayload = { ...payload, iat: now, exp: now + expiresInSeconds };
+  const encodedHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
+  const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(fullPayload)));
+  const dataToSign = new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`);
+  const key = await getSigningKey(secret);
+  const signature = await crypto.subtle.sign('HMAC', key, dataToSign);
+  return `${encodedHeader}.${encodedPayload}.${base64UrlEncode(signature)}`;
+};
+const verifyJWT = async (token: string, secret: string): Promise<JWTPayload> => {
+  const [header, payload, signature] = token.split('.');
+  if (!header || !payload || !signature) throw new Error('Invalid token format');
+  const key = await getSigningKey(secret);
+  const dataToVerify = new TextEncoder().encode(`${header}.${payload}`);
+  const signatureBuffer = base64UrlDecode(signature);
+  const isValid = await crypto.subtle.verify('HMAC', key, signatureBuffer, dataToVerify);
+  if (!isValid) throw new Error('Invalid signature');
+  const decodedPayload: JWTPayload = JSON.parse(new TextDecoder().decode(base64UrlDecode(payload)));
+  if (decodedPayload.exp * 1000 < Date.now()) throw new Error('Token expired');
+  return decodedPayload;
+};
+const hashPassword = async (password: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+const verifyPassword = async (password: string, hash: string): Promise<boolean> => {
+  const passwordHash = await hashPassword(password);
+  return passwordHash === hash;
+};
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
+  // --- AUTH ROUTES ---
+  app.post('/api/auth/register', async (c) => {
+    const { email, password, name, role = 'student' } = await c.req.json();
+    if (!isStr(email) || !isStr(password) || !isStr(name)) return bad(c, 'Email, password, and name are required.');
+    const tenantId = 'inst-1'; // Hardcoded for prototype
+    const allUsers = await UserEntity.list(c.env, tenantId);
+    if (allUsers.items.some(u => u.email === email)) return bad(c, 'An account with this email already exists.');
+    const passwordHash = await hashPassword(password);
+    const newUser: User = {
+      id: crypto.randomUUID(),
+      tenantId,
+      name,
+      email,
+      role,
+      passwordHash,
+    };
+    await UserEntity.create(c.env, tenantId, newUser);
+    const { passwordHash: _, ...userResponse } = newUser;
+    const token = await signJWT({ userId: newUser.id, tenantId, role }, c.env.JWT_SECRET || 'default-secret');
+    return ok(c, { token, user: userResponse });
+  });
+  app.post('/api/auth/login', async (c) => {
+    const { email, password } = await c.req.json();
+    if (!isStr(email) || !isStr(password)) return bad(c, 'Email and password are required.');
+    const tenantId = 'inst-1';
+    await UserEntity.ensureSeed(c.env, tenantId);
+    const allUsers = await UserEntity.list(c.env, tenantId);
+    const user = allUsers.items.find(u => u.email === email);
+    if (!user || !user.passwordHash) return bad(c, 'Invalid credentials.');
+    const isPasswordValid = await verifyPassword(password, user.passwordHash);
+    if (!isPasswordValid) return bad(c, 'Invalid credentials.');
+    const { passwordHash: _, ...userResponse } = user;
+    const token = await signJWT({ userId: user.id, tenantId, role: user.role }, c.env.JWT_SECRET || 'default-secret');
+    return ok(c, { token, user: userResponse });
+  });
   // PUBLIC ROUTE FOR TENANT REQUESTS
   app.post('/api/tenant-request', async (c) => {
     const { name, country, curriculum, languages, adminEmail, verificationDomain } = await c.req.json<Partial<PendingTenant>>();
@@ -28,14 +114,32 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   // Middleware to simulate a tenant and user role context
   const tenantMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) => {
-    // In a real app, this would come from a JWT or session
-    const mockUserRole = c.req.header('X-Mock-Role') as UserRole || 'student';
-    const mockTenantId = 'inst-1';
-    (c as any).set('userRole', mockUserRole);
-    if (mockUserRole === 'super-admin') {
-      (c as any).set('tenantId', 'global'); // Super-admins operate globally or on specific tenants
+    let claims: JWTPayload | null = null;
+    const authHeader = c.req.header('Authorization');
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        claims = await verifyJWT(token, c.env.JWT_SECRET || 'default-secret');
+        (c as any).set('userId', claims.userId);
+        (c as any).set('userRole', claims.role);
+        (c as any).set('tenantId', claims.tenantId);
+      } catch (e) {
+        console.warn('JWT verification failed:', (e as Error).message);
+        return c.json({ success: false, error: 'Unauthorized' }, 401);
+      }
+    }
+    // Fallback to mock role for development/testing
+    const mockUserRole = c.req.header('X-Mock-Role') as UserRole;
+    if (mockUserRole && !claims) {
+        (c as any).set('userRole', mockUserRole);
+        (c as any).set('userId', `user-${mockUserRole}-1`);
+    }
+    const userRole = (c as any).get('userRole') || 'student';
+    const tenantId = (c as any).get('tenantId') || 'inst-1';
+    if (userRole === 'super-admin') {
+      (c as any).set('tenantId', 'global');
     } else {
-      (c as any).set('tenantId', mockTenantId);
+      (c as any).set('tenantId', tenantId);
     }
     await next();
   };
@@ -136,6 +240,16 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await UserEntity.ensureSeed(c.env, tenantId);
     const page = await UserEntity.list(c.env, tenantId);
     return ok(c, page.items);
+  });
+  app.get('/api/users/:id', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const id = c.req.param('id');
+    const userEntity = new UserEntity(c.env, id);
+    if (!(await userEntity.exists())) return notFound(c, 'User not found');
+    const user = await userEntity.getState();
+    if (user.tenantId !== tenantId) return notFound(c, 'User not found in this institution');
+    const { passwordHash: _, ...userResponse } = user;
+    return ok(c, userResponse);
   });
   // COURSES (CMS-like routes)
   app.get('/api/cms/courses', async (c) => {

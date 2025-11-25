@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { User } from '@shared/types';
+import type { User, JWTPayload } from '@shared/types';
+import { api } from '@/lib/api-client';
 interface AuthState {
   user: User | null;
+  token: string | null;
   isAuthenticated: boolean;
-  login: (user: User) => void;
+  login: (user: User, token: string) => void;
   logout: () => void;
+  initialize: () => Promise<void>;
 }
-const STORAGE_KEY = 'auth-storage';
+const STORAGE_KEY = 'auth-token';
 const isLocalStorageAvailable = (): boolean => {
   try {
     return typeof window !== 'undefined' && window.localStorage != null;
@@ -14,106 +17,85 @@ const isLocalStorageAvailable = (): boolean => {
     return false;
   }
 };
+const decodeJWT = (token: string): JWTPayload | null => {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const decodedPayload = JSON.parse(atob(payload));
+    if (decodedPayload.exp * 1000 < Date.now()) {
+      console.log("Token expired");
+      return null;
+    }
+    return decodedPayload;
+  } catch (error) {
+    console.error("Failed to decode JWT:", error);
+    return null;
+  }
+};
 type Subscriber = () => void;
-// This factory function creates a new instance of the auth store and its associated hook.
-// This ensures that React hooks (useState, useEffect, useRef) are only called when the
-// useAuthStore hook is actually used within a React component, fixing the "invalid hook call" error.
 export const createAuthStore = () => {
   const subscribers = new Set<Subscriber>();
-  const readPersisted = (): Partial<AuthState> => {
-    if (!isLocalStorageAvailable()) return { user: null, isAuthenticated: false };
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return { user: null, isAuthenticated: false };
-      const parsed = JSON.parse(raw);
-      return {
-        user: parsed?.user ?? null,
-        isAuthenticated: !!parsed?.isAuthenticated,
-      };
-    } catch (error) {
-      console.error("Failed to read persisted auth state:", error);
-      return { user: null, isAuthenticated: false };
-    }
-  };
   let state: AuthState = {
-    ...readPersisted(),
-    user: readPersisted().user || null,
-    isAuthenticated: readPersisted().isAuthenticated || false,
+    user: null,
+    token: null,
+    isAuthenticated: false,
     login: () => {},
     logout: () => {},
+    initialize: async () => {},
   };
-  const notify = () => {
-    subscribers.forEach((s) => {
-      try {
-        s();
-      } catch (e) {
-        console.error("Auth store subscriber failed:", e);
-      }
-    });
-  };
-  const persist = (s: AuthState) => {
-    if (!isLocalStorageAvailable()) return;
-    try {
-      const toPersist = {
-        user: s.user,
-        isAuthenticated: s.isAuthenticated,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toPersist));
-    } catch (error) {
-      console.error("Failed to persist auth state:", error);
-    }
-  };
+  const notify = () => subscribers.forEach((s) => s());
   const setState = (patch: Partial<AuthState> | ((prev: AuthState) => Partial<AuthState>)) => {
     const nextState = typeof patch === 'function' ? patch(state) : patch;
     state = { ...state, ...nextState };
-    persist(state);
     notify();
   };
-  const login = (user: User) => {
-    setState({ user, isAuthenticated: true });
+  const login = (user: User, token: string) => {
+    if (isLocalStorageAvailable()) {
+      localStorage.setItem(STORAGE_KEY, token);
+    }
+    setState({ user, token, isAuthenticated: true });
   };
   const logout = () => {
-    setState({ user: null, isAuthenticated: false });
+    if (isLocalStorageAvailable()) {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+    setState({ user: null, token: null, isAuthenticated: false });
+  };
+  const initialize = async () => {
+    if (!isLocalStorageAvailable()) return;
+    const token = localStorage.getItem(STORAGE_KEY);
+    if (token) {
+      const claims = decodeJWT(token);
+      if (claims) {
+        try {
+          // Fetch user data to ensure it's up-to-date
+          const user = await api<User>(`/api/users/${claims.userId}`);
+          login(user, token);
+        } catch (error) {
+          console.error("Failed to re-authenticate user:", error);
+          logout();
+        }
+      } else {
+        logout();
+      }
+    }
   };
   state.login = login;
   state.logout = logout;
+  state.initialize = initialize;
   const useAuthStore = <T>(selector: (s: AuthState) => T): T => {
-    const selectorRef = useRef(selector);
-    selectorRef.current = selector;
-    const getSelected = useCallback((): T => {
-      try {
-        return selectorRef.current(state);
-      } catch (e) {
-        console.error("Auth store selector failed:", e);
-        return undefined as any as T;
-      }
-    }, []);
-    const [selectedValue, setSelectedValue] = useState(() => getSelected());
-    const selectedValueRef = useRef(selectedValue);
-    selectedValueRef.current = selectedValue;
+    const getSelected = useCallback(() => selector(state), [selector]);
+    const [value, setValue] = useState(getSelected);
     useEffect(() => {
-      const checkForUpdates = () => {
-        try {
-          const nextValue = getSelected();
-          if (nextValue !== selectedValueRef.current) {
-            selectedValueRef.current = nextValue;
-            setSelectedValue(nextValue);
-          }
-        } catch (e) {
-          console.error("Auth store update check failed:", e);
-        }
-      };
-      checkForUpdates();
-      subscribers.add(checkForUpdates);
-      return () => {
-        subscribers.delete(checkForUpdates);
-      };
+      const sub = () => setValue(getSelected);
+      subscribers.add(sub);
+      return () => subscribers.delete(sub);
     }, [getSelected]);
-    return selectedValue;
+    return value;
   };
   (useAuthStore as any).getState = () => state;
   return useAuthStore;
 };
-// Export a single instance for the app to use.
-// Components will call this hook, which is now safe.
 export const useAuthStore = createAuthStore();
+// Initialize auth state on app load
+useAuthStore.getState().initialize();
