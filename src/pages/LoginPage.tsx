@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { authActions } from '@/store/auth';
+import { authActions, useAuthStore } from '@/store/auth';
 import { api } from '@/lib/api-client';
 import type { LoginResponse } from '@shared/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -177,8 +177,8 @@ function LoginForm() {
   );
 }
 export default function LoginPage() {
-
-  if (!i18n.isInitialized) {
+  const isAuthInitialized = useAuthStore(s => s.isInitialized);
+  if (!i18n.isInitialized || !isAuthInitialized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

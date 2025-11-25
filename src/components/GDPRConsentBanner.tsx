@@ -8,22 +8,11 @@ import { Button } from '@/components/ui/button';
 const CONSENT_KEY = 'gdpr_consent';
 function GDPRConsentBannerLogic() {
   const { t } = useTranslation();
-  const [isVisible, setIsVisible] = useState(() => {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      return localStorage.getItem(CONSENT_KEY) === null;
-    }
-    return false;
-  });
+  const [isVisible, setIsVisible] = useState(false);
   useEffect(() => {
-    const handleStorageChange = () => {
-      if (localStorage.getItem(CONSENT_KEY) !== null) {
-        setIsVisible(false);
-      }
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
+    if (typeof window !== 'undefined' && window.localStorage) {
+      setIsVisible(localStorage.getItem(CONSENT_KEY) === null);
+    }
   }, []);
   const handleAccept = () => {
     localStorage.setItem(CONSENT_KEY, 'true');

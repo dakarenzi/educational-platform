@@ -3,21 +3,17 @@ import { Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 interface LanguageToggleProps {
   className?: string;
 }
 export function LanguageToggle({ className }: LanguageToggleProps) {
+  const { i18n } = useTranslation();
   if (!i18n.isInitialized) {
     return null; // or a loading skeleton
   }
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
-    try {
-      // persist selected language so it survives reloads
-      localStorage.setItem('i18nextLng', lng);
-    } catch (_) {
-      // ignore localStorage errors (e.g., SSR or disabled storage)
-    }
   };
   return (
     <DropdownMenu>

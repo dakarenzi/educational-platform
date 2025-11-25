@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { CreditCard, Check, Star, Loader2, User, Building } from 'lucide-react';
@@ -7,8 +7,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { api } from '@/lib/api-client';
-import type { Institution, StudentSubscription } from '@shared/types';
-import { useAuthStore } from '@/store/auth';
+import type { Institution, StudentSubscription, User as UserType } from '@shared/types';
+import { useAuthStore, authActions } from '@/store/auth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +22,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { cn } from '@/lib/utils';
 const fetchInstitution = async (): Promise<Institution> => api<Institution>('/api/institution');
 const fetchStudentSubscriptions = async (): Promise<StudentSubscription[]> => api<StudentSubscription[]>('/api/student/subscriptions');
 const quoteSchema = z.object({
@@ -33,6 +35,7 @@ const quoteSchema = z.object({
 type QuoteFormValues = z.infer<typeof quoteSchema>;
 export default function BillingPage() {
   const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<'basic' | 'pro'>('basic');
   const user = useAuthStore(s => s.user);
   const queryClient = useQueryClient();
   const form = useForm<QuoteFormValues>({
@@ -88,13 +91,33 @@ export default function BillingPage() {
     onSuccess: () => {
       toast.success('Subscription canceled.');
       queryClient.invalidateQueries({ queryKey: ['student-subscriptions'] });
-      queryClient.invalidateQueries({ queryKey: ['user'] }); // To update user status
+      queryClient.invalidateQueries({ queryKey: ['user'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to cancel subscription.'),
   });
-  const tiers = [
+  const createStudentSubMutation = useMutation({
+    mutationFn: (payload: { plan: 'basic' | 'pro' }) => api('/api/student/subscriptions', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+    onSuccess: async () => {
+      toast.success('Subscription created. Refreshing status...');
+      await queryClient.invalidateQueries({ queryKey: ['student-subscriptions'] });
+      await queryClient.invalidateQueries({ queryKey: ['user'] });
+      if (user?.id) {
+        const updatedUser = await api<UserType>(`/api/users/${user.id}`);
+        authActions.setUser(updatedUser);
+      }
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to create subscription.'),
+  });
+  const institutionTiers = [
     { name: 'Trial', price: '$0', description: 'Explore with basic features.', features: ['Up to 10 students', '2 courses', 'Basic analytics'], plan: 'trial' },
     { name: 'Pro', price: 'Custom', priceSuffix: '', description: 'Unlock the full potential.', features: ['Unlimited students', 'Unlimited courses', 'Advanced analytics', 'Priority support'], plan: 'pro', highlight: true },
+  ];
+  const studentTiers = [
+    { name: 'Basic', price: '$2.99', priceSuffix: '/mo', description: 'Essential learning tools.', features: ['Unlimited quizzes', 'Basic AI Tutor help'], plan: 'basic' },
+    { name: 'Pro', price: '$4.99', priceSuffix: '/mo', description: 'Full access to all features.', features: ['Full AI Tutor capabilities', 'Access to all premium courses', 'Personal analytics'], plan: 'pro', highlight: true },
   ];
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
@@ -140,7 +163,7 @@ export default function BillingPage() {
                     </Card>
                   </motion.div>
                   <motion.div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8" variants={containerVariants}>
-                    {tiers.map((tier) => (
+                    {institutionTiers.map((tier) => (
                       <motion.div key={tier.name} variants={itemVariants}>
                         <Card className={`flex flex-col h-full ${tier.highlight ? 'border-primary ring-1 ring-primary shadow-lg' : ''}`}>
                           <CardHeader>
@@ -190,30 +213,54 @@ export default function BillingPage() {
                     {isLoadingStudentSubs && <Skeleton className="h-32 w-full" />}
                     {studentSubsError && <p className="text-destructive">Could not load your subscriptions.</p>}
                     {studentSubscriptions && (
-                      studentSubscriptions.length === 0 ? <p className="text-muted-foreground text-center py-8">You have no active subscriptions. Upgrade to access premium courses.</p> :
-                      <Table>
-                        <TableHeader><TableRow><TableHead>Plan</TableHead><TableHead>Status</TableHead><TableHead>Expires</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                          {studentSubscriptions.map(sub => (
-                            <TableRow key={sub.id}>
-                              <TableCell className="font-medium capitalize">{sub.plan}</TableCell>
-                              <TableCell><Badge variant={sub.status === 'active' ? 'success' : 'secondary'} className="capitalize">{sub.status}</Badge></TableCell>
-                              <TableCell>{new Date(sub.expiry * 1000).toLocaleDateString()}</TableCell>
-                              <TableCell className="text-right">
-                                {sub.status === 'active' && (
-                                  <AlertDialog>
-                                    <AlertDialogTrigger asChild><Button variant="destructive" size="sm" disabled={cancelStudentSubMutation.isPending}>Cancel</Button></AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                      <AlertDialogHeader><AlertDialogTitle>Cancel Subscription?</AlertDialogTitle><AlertDialogDescription>Your premium access will remain active until the expiry date.</AlertDialogDescription></AlertDialogHeader>
-                                      <AlertDialogFooter><AlertDialogCancel>Keep Subscription</AlertDialogCancel><AlertDialogAction onClick={() => cancelStudentSubMutation.mutate(sub.id)}>Confirm Cancellation</AlertDialogAction></AlertDialogFooter>
-                                    </AlertDialogContent>
-                                  </AlertDialog>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                      studentSubscriptions.some(s => s.status === 'active') ? (
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Plan</TableHead><TableHead>Status</TableHead><TableHead>Expires</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {studentSubscriptions.map(sub => (
+                              <TableRow key={sub.id}>
+                                <TableCell className="font-medium capitalize">{sub.plan}</TableCell>
+                                <TableCell><Badge variant={sub.status === 'active' ? 'success' : 'secondary'} className="capitalize">{sub.status}</Badge></TableCell>
+                                <TableCell>{new Date(sub.expiry * 1000).toLocaleDateString()}</TableCell>
+                                <TableCell className="text-right">
+                                  {sub.status === 'active' && (
+                                    <AlertDialog>
+                                      <AlertDialogTrigger asChild><Button variant="destructive" size="sm" disabled={cancelStudentSubMutation.isPending}>Cancel</Button></AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                        <AlertDialogHeader><AlertDialogTitle>Cancel Subscription?</AlertDialogTitle><AlertDialogDescription>Your premium access will remain active until the expiry date.</AlertDialogDescription></AlertDialogHeader>
+                                        <AlertDialogFooter><AlertDialogCancel>Keep Subscription</AlertDialogCancel><AlertDialogAction onClick={() => cancelStudentSubMutation.mutate(sub.id)}>Confirm Cancellation</AlertDialogAction></AlertDialogFooter>
+                                      </AlertDialogContent>
+                                    </AlertDialog>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="text-center py-8 space-y-8">
+                          <p className="text-muted-foreground">You have no active subscriptions. Upgrade to access premium courses.</p>
+                          <RadioGroup defaultValue="basic" value={selectedTier} onValueChange={(v: 'basic' | 'pro') => setSelectedTier(v)} className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                            {studentTiers.map(tier => (
+                              <Label key={tier.name} htmlFor={tier.plan} className={cn("block cursor-pointer rounded-lg border bg-card text-card-foreground shadow-sm p-6 transition-all", selectedTier === tier.plan && "border-primary ring-2 ring-primary")}>
+                                <div className="flex items-center justify-between">
+                                  <h3 className="text-lg font-semibold">{tier.name}</h3>
+                                  <RadioGroupItem value={tier.plan} id={tier.plan} />
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-1">{tier.description}</p>
+                                <div className="mt-4"><span className="text-3xl font-bold">{tier.price}</span><span className="text-muted-foreground">{tier.priceSuffix}</span></div>
+                                <ul className="mt-4 space-y-2 text-sm">
+                                  {tier.features.map(feature => <li key={feature} className="flex items-center gap-2"><Check className="h-4 w-4 text-success" />{feature}</li>)}
+                                </ul>
+                              </Label>
+                            ))}
+                          </RadioGroup>
+                          <Button className="bg-amber-400 hover:bg-amber-500 text-foreground" onClick={() => createStudentSubMutation.mutate({ plan: selectedTier })} disabled={createStudentSubMutation.isPending}>
+                            {createStudentSubMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Upgrade to {selectedTier === 'basic' ? 'Basic' : 'Pro'}
+                          </Button>
+                        </div>
+                      )
                     )}
                   </CardContent>
                 </Card>

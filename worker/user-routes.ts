@@ -392,14 +392,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, subs.items.filter(s => s.userId === userId));
   });
   app.post('/api/student/subscriptions', async (c) => {
-    const { plan = 'premium' } = await c.req.json();
+    const { plan = 'basic' } = await c.req.json<{ plan: 'basic' | 'pro' }>();
     const userId = (c as any).get('userId');
     const tenantId = (c as any).get('tenantId');
     if (!userId) return bad(c, 'Unauthorized');
+    const now = Math.floor(Date.now() / 1000);
+    const expiry = plan === 'basic' ? now + 2592000 : now + 7776000; // 30 or 90 days
+    const paymentId = `pay_${crypto.randomUUID()}`;
     const userEntity = new UserEntity(c.env, userId);
-    await userEntity.patch({ subscriptionStatus: 'premium', paymentId: `pay_${crypto.randomUUID()}`, expiry: Math.floor(Date.now() / 1000) + 2592000 });
-    const sub: StudentSubscription = { id: crypto.randomUUID(), userId, tenantId, plan, status: 'active', expiry: Math.floor(Date.now() / 1000) + 2592000, paymentId: `pay_${crypto.randomUUID()}` };
+    await userEntity.patch({ subscriptionStatus: 'premium', paymentId, expiry });
+    const sub: StudentSubscription = {
+      id: crypto.randomUUID(),
+      userId,
+      tenantId,
+      plan: 'premium', // Storing as 'premium' for user status, but logging the tier
+      status: 'active',
+      expiry,
+      paymentId,
+    };
     await StudentSubscriptionEntity.create(c.env, tenantId, sub);
+    console.log(`[MONITOR] event=student_subscription_${plan} userId=${userId} tenantId=${tenantId}`);
     return ok(c, { sessionUrl: '/app/billing?success=true' });
   });
   app.put('/api/student/subscriptions/:id/cancel', async (c) => {
