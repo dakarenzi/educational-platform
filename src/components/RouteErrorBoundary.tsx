@@ -3,7 +3,13 @@ import { useEffect } from 'react';
 import { errorReporter } from '@/lib/errorReporter';
 import { ErrorFallback } from './ErrorFallback';
 export function RouteErrorBoundary() {
-  const error = useRouteError();
+  const routeError = useRouteError();
+  let error = routeError;
+  if (!error) {
+    // Keep a console path for nullish values from the hook to aid debugging
+    // eslint-disable-next-line no-console
+    console.error('useRouteError returned nullish');
+  }
   useEffect(() => {
     if (error) {
       let errorMessage = 'Unknown route error';

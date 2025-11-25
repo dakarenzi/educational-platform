@@ -23,9 +23,16 @@ const base64UrlDecode = (str: string): ArrayBuffer => {
   }
   return bytes.buffer;
 };
+const DEFAULT_JWT_SECRET = 'academicloud-secret-key-2024';
+
 const getSigningKey = async (secret: string): Promise<CryptoKey> => {
+  // Ensure we never try to import a key from an empty Uint8Array which causes a DataError.
+  const secretToUse = (secret && secret.length > 0) ? secret : DEFAULT_JWT_SECRET;
+  if (!secret || secret.length === 0) {
+    console.warn('JWT secret is empty or falsy; falling back to DEFAULT_JWT_SECRET. Set JWT_SECRET in Bindings for production.');
+  }
   const encoder = new TextEncoder();
-  return crypto.subtle.importKey('raw', encoder.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
+  return crypto.subtle.importKey('raw', encoder.encode(secretToUse), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign', 'verify']);
 };
 const signJWT = async (payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: string, expiresInSeconds: number = 3600): Promise<string> => {
   const header = { alg: 'HS256', typ: 'JWT' };
@@ -34,14 +41,16 @@ const signJWT = async (payload: Omit<JWTPayload, 'iat' | 'exp'>, secret: string,
   const encodedHeader = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
   const encodedPayload = base64UrlEncode(new TextEncoder().encode(JSON.stringify(fullPayload)));
   const dataToSign = new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`);
-  const key = await getSigningKey(secret);
+  const normalizedSecret = secret && secret.length > 0 ? secret : DEFAULT_JWT_SECRET;
+  const key = await getSigningKey(normalizedSecret);
   const signature = await crypto.subtle.sign('HMAC', key, dataToSign);
   return `${encodedHeader}.${encodedPayload}.${base64UrlEncode(signature)}`;
 };
 const verifyJWT = async (token: string, secret: string): Promise<JWTPayload> => {
   const [header, payload, signature] = token.split('.');
   if (!header || !payload || !signature) throw new Error('Invalid token format');
-  const key = await getSigningKey(secret);
+  const normalizedSecret = secret && secret.length > 0 ? secret : DEFAULT_JWT_SECRET;
+  const key = await getSigningKey(normalizedSecret);
   const dataToVerify = new TextEncoder().encode(`${header}.${payload}`);
   const signatureBuffer = base64UrlDecode(signature);
   const isValid = await crypto.subtle.verify('HMAC', key, signatureBuffer, dataToVerify);

@@ -30,11 +30,11 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function LoginPage() {
   const navigate = useNavigate();
   const loginForm = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(loginSchema) as any,
     defaultValues: { email: '', password: '' },
   });
   const registerForm = useForm<RegisterFormValues>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(registerSchema) as any,
     defaultValues: { name: '', email: '', password: '', role: 'student' },
   });
   const loginMutation = useMutation({
@@ -47,6 +47,8 @@ export default function LoginPage() {
       toast.success(`Welcome back, ${data.user.name}!`);
       if (data.user.role === 'super-admin') {
         navigate('/app/super-admin');
+      } else if (data.user.role === 'teacher') {
+        navigate('/app/teacher/dashboard');
       } else {
         navigate('/app/dashboard');
       }
@@ -61,7 +63,13 @@ export default function LoginPage() {
     onSuccess: (data) => {
       authActions.login(data.user, data.token);
       toast.success(`Welcome, ${data.user.name}! Your account has been created.`);
-      navigate('/app/dashboard');
+      if (data.user.role === 'super-admin') {
+        navigate('/app/super-admin');
+      } else if (data.user.role === 'teacher') {
+        navigate('/app/teacher/dashboard');
+      } else {
+        navigate('/app/dashboard');
+      }
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Registration failed.'),
   });
