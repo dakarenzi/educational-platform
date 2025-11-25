@@ -66,6 +66,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { email, password, name, role = 'student' } = await c.req.json();
     if (!isStr(email) || !isStr(password) || !isStr(name)) return bad(c, 'Email, password, and name are required.');
     const tenantId = 'inst-1'; // Hardcoded for prototype
+    await UserEntity.ensureSeed(c.env, tenantId);
     const allUsers = await UserEntity.list(c.env, tenantId);
     if (allUsers.items.some(u => u.email === email)) return bad(c, 'An account with this email already exists.');
     const passwordHash = await hashPassword(password);
@@ -79,7 +80,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     await UserEntity.create(c.env, tenantId, newUser);
     const { passwordHash: _, ...userResponse } = newUser;
-    const token = await signJWT({ userId: newUser.id, tenantId, role }, c.env.JWT_SECRET || 'default-secret');
+    const token = await signJWT({ userId: newUser.id, tenantId, role }, c.env.JWT_SECRET);
     return ok(c, { token, user: userResponse });
   });
   app.post('/api/auth/login', async (c) => {
@@ -93,8 +94,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const isPasswordValid = await verifyPassword(password, user.passwordHash);
     if (!isPasswordValid) return bad(c, 'Invalid credentials.');
     const { passwordHash: _, ...userResponse } = user;
-    const token = await signJWT({ userId: user.id, tenantId, role: user.role }, c.env.JWT_SECRET || 'default-secret');
+    const token = await signJWT({ userId: user.id, tenantId, role: user.role }, c.env.JWT_SECRET);
     return ok(c, { token, user: userResponse });
+  });
+  app.post('/api/auth/logout', (c) => {
+    console.log('User logged out. In a real app, you might blacklist the token here.');
+    return ok(c, { success: true });
   });
   // PUBLIC ROUTE FOR TENANT REQUESTS
   app.post('/api/tenant-request', async (c) => {
@@ -119,27 +124,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       try {
-        claims = await verifyJWT(token, c.env.JWT_SECRET || 'default-secret');
-        (c as any).set('userId', claims.userId);
-        (c as any).set('userRole', claims.role);
-        (c as any).set('tenantId', claims.tenantId);
+        claims = await verifyJWT(token, c.env.JWT_SECRET);
       } catch (e) {
         console.warn('JWT verification failed:', (e as Error).message);
         return c.json({ success: false, error: 'Unauthorized' }, 401);
       }
     }
-    // Fallback to mock role for development/testing
-    const mockUserRole = c.req.header('X-Mock-Role') as UserRole;
-    if (mockUserRole && !claims) {
-        (c as any).set('userRole', mockUserRole);
-        (c as any).set('userId', `user-${mockUserRole}-1`);
+    if (claims) {
+      (c as any).set('userId', claims.userId);
+      (c as any).set('userRole', claims.role);
+      (c as any).set('tenantId', claims.tenantId);
+    } else {
+      // Fallback to mock role for development/testing if no JWT is provided
+      const mockUserRole = c.req.header('X-Mock-Role') as UserRole || 'student';
+      (c as any).set('userRole', mockUserRole);
+      (c as any).set('userId', `user-${mockUserRole}-1`);
+      (c as any).set('tenantId', mockUserRole === 'super-admin' ? 'global' : 'inst-1');
     }
-    const userRole = (c as any).get('userRole') || 'student';
-    const tenantId = (c as any).get('tenantId') || 'inst-1';
+    const userRole = (c as any).get('userRole');
     if (userRole === 'super-admin') {
       (c as any).set('tenantId', 'global');
-    } else {
-      (c as any).set('tenantId', tenantId);
     }
     await next();
   };
@@ -247,7 +251,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const userEntity = new UserEntity(c.env, id);
     if (!(await userEntity.exists())) return notFound(c, 'User not found');
     const user = await userEntity.getState();
-    if (user.tenantId !== tenantId) return notFound(c, 'User not found in this institution');
+    if (user.tenantId !== tenantId && (c as any).get('userRole') !== 'super-admin') return notFound(c, 'User not found in this institution');
     const { passwordHash: _, ...userResponse } = user;
     return ok(c, userResponse);
   });
@@ -339,7 +343,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // TEACHER-SPECIFIC ROUTES
   app.get('/api/teacher/courses', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);
-    const teacherId = 'user-teacher-1'; // Mocked teacher ID
+    const teacherId = (c as any).get('userId');
+    if ((c as any).get('userRole') !== 'teacher' && (c as any).get('userRole') !== 'admin') return c.json({ error: 'Forbidden' }, 403);
     await CourseEntity.ensureSeed(c.env, tenantId);
     const allCourses = await CourseEntity.list(c.env, tenantId);
     const teacherCourses = allCourses.items.filter(course => course.teacherId === teacherId);
@@ -347,7 +352,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/teacher/flashcard-decks', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);
-    const teacherId = 'user-teacher-1'; // Mocked teacher ID
+    const teacherId = (c as any).get('userId');
+    if ((c as any).get('userRole') !== 'teacher' && (c as any).get('userRole') !== 'admin') return c.json({ error: 'Forbidden' }, 403);
     await FlashcardDeckEntity.ensureSeed(c.env, tenantId);
     const allDecks = await FlashcardDeckEntity.list(c.env, tenantId);
     const teacherDecks = allDecks.items.filter(deck => deck.userId === teacherId);
@@ -356,7 +362,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/teacher/quizzes', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);
-    const teacherId = 'user-teacher-1'; // Mocked teacher ID
+    const teacherId = (c as any).get('userId');
+    if ((c as any).get('userRole') !== 'teacher' && (c as any).get('userRole') !== 'admin') return c.json({ error: 'Forbidden' }, 403);
     await QuizEntity.ensureSeed(c.env, tenantId);
     await LessonEntity.ensureSeed(c.env, tenantId);
     await CourseEntity.ensureSeed(c.env, tenantId);
@@ -490,7 +497,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       fileUrl,
       category: category as Resource['category'],
       lessonId,
-      creatorId: 'user-teacher-1', // Mocked user
+      creatorId: (c as any).get('userId'),
       downloads: 0,
       createdAt: new Date().toISOString(),
     };

@@ -1,13 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { create } from 'zustand';
 import type { User, JWTPayload } from '@shared/types';
 import { api } from '@/lib/api-client';
 interface AuthState {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  login: (user: User, token: string) => void;
-  logout: () => void;
-  initialize: () => Promise<void>;
+  isInitialized: boolean;
+  actions: {
+    login: (user: User, token: string) => void;
+    logout: () => void;
+    initialize: () => Promise<void>;
+  };
 }
 const STORAGE_KEY = 'auth-token';
 const isLocalStorageAvailable = (): boolean => {
@@ -32,70 +35,51 @@ const decodeJWT = (token: string): JWTPayload | null => {
     return null;
   }
 };
-type Subscriber = () => void;
-export const createAuthStore = () => {
-  const subscribers = new Set<Subscriber>();
-  let state: AuthState = {
-    user: null,
-    token: null,
-    isAuthenticated: false,
-    login: () => {},
-    logout: () => {},
-    initialize: async () => {},
-  };
-  const notify = () => subscribers.forEach((s) => s());
-  const setState = (patch: Partial<AuthState> | ((prev: AuthState) => Partial<AuthState>)) => {
-    const nextState = typeof patch === 'function' ? patch(state) : patch;
-    state = { ...state, ...nextState };
-    notify();
-  };
-  const login = (user: User, token: string) => {
-    if (isLocalStorageAvailable()) {
-      localStorage.setItem(STORAGE_KEY, token);
-    }
-    setState({ user, token, isAuthenticated: true });
-  };
-  const logout = () => {
-    if (isLocalStorageAvailable()) {
-      localStorage.removeItem(STORAGE_KEY);
-    }
-    setState({ user: null, token: null, isAuthenticated: false });
-  };
-  const initialize = async () => {
-    if (!isLocalStorageAvailable()) return;
-    const token = localStorage.getItem(STORAGE_KEY);
-    if (token) {
-      const claims = decodeJWT(token);
-      if (claims) {
-        try {
-          // Fetch user data to ensure it's up-to-date
-          const user = await api<User>(`/api/users/${claims.userId}`);
-          login(user, token);
-        } catch (error) {
-          console.error("Failed to re-authenticate user:", error);
-          logout();
-        }
-      } else {
-        logout();
+export const useAuthStore = create<AuthState>((set, get) => ({
+  user: null,
+  token: null,
+  isAuthenticated: false,
+  isInitialized: false,
+  actions: {
+    login: (user, token) => {
+      if (isLocalStorageAvailable()) {
+        localStorage.setItem(STORAGE_KEY, token);
       }
-    }
-  };
-  state.login = login;
-  state.logout = logout;
-  state.initialize = initialize;
-  const useAuthStore = <T>(selector: (s: AuthState) => T): T => {
-    const getSelected = useCallback(() => selector(state), [selector]);
-    const [value, setValue] = useState(getSelected);
-    useEffect(() => {
-      const sub = () => setValue(getSelected);
-      subscribers.add(sub);
-      return () => subscribers.delete(sub);
-    }, [getSelected]);
-    return value;
-  };
-  (useAuthStore as any).getState = () => state;
-  return useAuthStore;
-};
-export const useAuthStore = createAuthStore();
+      set({ user, token, isAuthenticated: true });
+    },
+    logout: () => {
+      if (isLocalStorageAvailable()) {
+        localStorage.removeItem(STORAGE_KEY);
+      }
+      set({ user: null, token: null, isAuthenticated: false });
+    },
+    initialize: async () => {
+      if (get().isInitialized || !isLocalStorageAvailable()) {
+        return;
+      }
+      try {
+        const token = localStorage.getItem(STORAGE_KEY);
+        if (token) {
+          const claims = decodeJWT(token);
+          if (claims) {
+            const user = await api<User>(`/api/users/${claims.userId}`);
+            set({ user, token, isAuthenticated: true, isInitialized: true });
+          } else {
+            get().actions.logout();
+            set({ isInitialized: true });
+          }
+        } else {
+          set({ isInitialized: true });
+        }
+      } catch (error) {
+        console.error("Failed to initialize auth state:", error);
+        get().actions.logout();
+        set({ isInitialized: true });
+      }
+    },
+  },
+}));
+// Expose actions for non-hook usage
+export const authActions = useAuthStore.getState().actions;
 // Initialize auth state on app load
-useAuthStore.getState().initialize();
+authActions.initialize();

@@ -11,9 +11,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useAuthStore } from '@/store/auth';
+import { authActions } from '@/store/auth';
 import { api } from '@/lib/api-client';
-import type { LoginResponse, RegisterRequest } from '@shared/types';
+import type { LoginResponse } from '@shared/types';
 const loginSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(1, 'Password is required.'),
@@ -26,8 +26,8 @@ const registerSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function LoginPage() {
+  // Hooks must be called at the top level
   const navigate = useNavigate();
-  const login = useAuthStore.getState().login;
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
@@ -42,7 +42,7 @@ export default function LoginPage() {
       body: JSON.stringify(data),
     }),
     onSuccess: (data) => {
-      login(data.user, data.token);
+      authActions.login(data.user, data.token);
       toast.success(`Welcome back, ${data.user.name}!`);
       navigate(data.user.role === 'super-admin' ? '/app/super-admin' : '/app/dashboard');
     },
@@ -54,7 +54,7 @@ export default function LoginPage() {
       body: JSON.stringify(data),
     }),
     onSuccess: (data) => {
-      login(data.user, data.token);
+      authActions.login(data.user, data.token);
       toast.success(`Welcome, ${data.user.name}! Your account has been created.`);
       navigate('/app/dashboard');
     },
@@ -64,71 +64,75 @@ export default function LoginPage() {
     <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
       <ThemeToggle className="absolute top-6 right-6" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(217,216,255,0.5),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(38,38,97,0.6),rgba(10,10,20,0))] -z-10" />
-      <div className="text-center mb-12">
-        <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground">
-          Welcome to AcademiCloud
-        </h1>
-        <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-          The illustrative educational platform to create, manage, and deliver engaging online learning experiences.
-        </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        <div className="py-8 md:py-10 lg:py-12">
+          <div className="text-center mb-12">
+            <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground">
+              Welcome to AcademiCloud
+            </h1>
+            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+              The illustrative educational platform to create, manage, and deliver engaging online learning experiences.
+            </p>
+          </div>
+          <Tabs defaultValue="login" className="w-full max-w-md mx-auto">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="login">Login</TabsTrigger>
+              <TabsTrigger value="register">Register</TabsTrigger>
+            </TabsList>
+            <TabsContent value="login">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Login</CardTitle>
+                  <CardDescription>Enter your credentials to access your account.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
+                      <FormField control={loginForm.control} name="email" render={({ field }) => (
+                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={loginForm.control} name="password" render={({ field }) => (
+                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                        {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Login
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+            <TabsContent value="register">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Register</CardTitle>
+                  <CardDescription>Create a new student account.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...registerForm}>
+                    <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} className="space-y-4">
+                      <FormField control={registerForm.control} name="name" render={({ field }) => (
+                        <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={registerForm.control} name="email" render={({ field }) => (
+                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={registerForm.control} name="password" render={({ field }) => (
+                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                        {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create Account
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
-      <Tabs defaultValue="login" className="w-full max-w-md">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="register">Register</TabsTrigger>
-        </TabsList>
-        <TabsContent value="login">
-          <Card>
-            <CardHeader>
-              <CardTitle>Login</CardTitle>
-              <CardDescription>Enter your credentials to access your account.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
-                  <FormField control={loginForm.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={loginForm.control} name="password" render={({ field }) => (
-                    <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                    {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Login
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="register">
-          <Card>
-            <CardHeader>
-              <CardTitle>Register</CardTitle>
-              <CardDescription>Create a new student account.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Form {...registerForm}>
-                <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} className="space-y-4">
-                  <FormField control={registerForm.control} name="name" render={({ field }) => (
-                    <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={registerForm.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={registerForm.control} name="password" render={({ field }) => (
-                    <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                    {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Create Account
-                  </Button>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
       <footer className="absolute bottom-6 text-center text-muted-foreground/80 text-sm">
         <p>Built with ❤️ at Cloudflare</p>
       </footer>

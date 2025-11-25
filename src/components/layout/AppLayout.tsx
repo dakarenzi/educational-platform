@@ -4,14 +4,23 @@ import { AcademiCloudSidebar } from "@/components/AcademiCloudSidebar";
 import { useAuthStore } from "@/store/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { Loader2 } from "lucide-react";
 export function AppLayout({ children }: { children?: React.ReactNode }): JSX.Element {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
+  const isInitialized = useAuthStore(s => s.isInitialized);
   const navigate = useNavigate();
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (isInitialized && !isAuthenticated) {
       navigate('/', { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isInitialized, navigate]);
+  if (!isInitialized) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   if (!isAuthenticated) {
     // Render nothing while redirecting to prevent flashing of content
     return null;

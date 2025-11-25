@@ -1,26 +1,29 @@
 import { ApiResponse } from "../../shared/types"
-import { useAuthStore } from "@/store/auth";
+import { useAuthStore, authActions } from "@/store/auth";
 const getToken = () => {
   // Access state directly for non-hook usage.
-  // This is safe because the api function is not a React component.
   return useAuthStore.getState().token;
 }
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
-  const headers = {
+  const headers: HeadersInit = {
     'Content-Type': 'application/json',
     ...init?.headers,
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
+  } else {
+    // Fallback for development when not logged in
+    headers['X-Mock-Role'] = 'student';
   }
   const res = await fetch(path, { ...init, headers });
+  if (res.status === 401) {
+    // Unauthorized, log the user out
+    authActions.logout();
+    throw new Error('Unauthorized');
+  }
   const json = (await res.json()) as ApiResponse<T>
   if (!res.ok) {
-    if (res.status === 401) {
-      // Unauthorized, log the user out
-      useAuthStore.getState().logout();
-    }
     throw new Error(json.error || 'Request failed');
   }
   if (!json.success || json.data === undefined) {
