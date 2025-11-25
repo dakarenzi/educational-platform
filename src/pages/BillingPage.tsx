@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-import { Navigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -45,15 +44,17 @@ export default function BillingPage() {
       adminEmail: user?.email || '',
     },
   });
+  const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
+  const isStudentOrTeacher = user?.role === 'student' || user?.role === 'teacher';
   const { data: institution, isLoading: isLoadingInstitution, error: institutionError } = useQuery({
     queryKey: ['institution'],
     queryFn: fetchInstitution,
-    enabled: !!user && (user.role === 'admin' || user.role === 'super-admin'),
+    enabled: !!user && isAdmin,
   });
   const { data: studentSubscriptions, isLoading: isLoadingStudentSubs, error: studentSubsError } = useQuery({
     queryKey: ['student-subscriptions'],
     queryFn: fetchStudentSubscriptions,
-    enabled: !!user && user.role === 'student',
+    enabled: !!user && isStudentOrTeacher,
   });
   const trialMutation = useMutation({
     mutationFn: () => api('/api/institution', {
@@ -91,17 +92,13 @@ export default function BillingPage() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to cancel subscription.'),
   });
-  if (!user || !['admin', 'super-admin', 'student'].includes(user.role)) {
-    return <Navigate to="/app/dashboard" replace />;
-  }
-  const isAdmin = user.role === 'admin' || user.role === 'super-admin';
-  const isStudent = user.role === 'student';
   const tiers = [
     { name: 'Trial', price: '$0', description: 'Explore with basic features.', features: ['Up to 10 students', '2 courses', 'Basic analytics'], plan: 'trial' },
     { name: 'Pro', price: 'Custom', priceSuffix: '', description: 'Unlock the full potential.', features: ['Unlimited students', 'Unlimited courses', 'Advanced analytics', 'Priority support'], plan: 'pro', highlight: true },
   ];
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
+  const defaultTab = isStudentOrTeacher ? 'student' : 'institution';
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 md:py-10 lg:py-12">
@@ -109,112 +106,120 @@ export default function BillingPage() {
           <h1 className="text-4xl font-bold font-display text-foreground">Billing & Subscriptions</h1>
           <p className="mt-2 text-lg text-muted-foreground">Manage your plan and payment details.</p>
         </motion.div>
-        <Tabs defaultValue={isAdmin ? "institution" : "student"} className="mt-8">
+        <Tabs defaultValue={defaultTab} className="mt-8">
           <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto">
             <TabsTrigger value="institution" disabled={!isAdmin}><Building className="mr-2 h-4 w-4" />Institution Plan</TabsTrigger>
-            <TabsTrigger value="student" disabled={!isStudent}><User className="mr-2 h-4 w-4" />My Subscriptions</TabsTrigger>
+            <TabsTrigger value="student" disabled={!isStudentOrTeacher}><User className="mr-2 h-4 w-4" />My Subscriptions</TabsTrigger>
           </TabsList>
-          <TabsContent value="institution" className="mt-8">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-              <motion.div className="lg:col-span-1" variants={itemVariants} initial="hidden" animate="visible">
-                <Card>
-                  <CardHeader><CardTitle>Current Plan</CardTitle></CardHeader>
-                  <CardContent>
-                    {isLoadingInstitution && <div className="space-y-4"><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>}
-                    {institutionError && <p className="text-destructive">Could not load plan details.</p>}
-                    {institution && (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-2xl font-semibold capitalize">{institution.plan}</span>
-                          <Badge variant={institution.status === 'active' || institution.status === 'trialing' ? 'success' : 'destructive'} className="capitalize">{institution.status}</Badge>
-                        </div>
-                        <Separator />
-                        {institution.nextBilling && (
-                          <div>
-                            <p className="text-sm text-muted-foreground">Next billing date</p>
-                            <p className="font-medium">{new Date(institution.nextBilling * 1000).toLocaleDateString()}</p>
+          {isAdmin && (
+            <TabsContent value="institution" className="mt-8">
+              <motion.div variants={containerVariants} initial="hidden" animate="visible">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                  <motion.div className="lg:col-span-1" variants={itemVariants}>
+                    <Card>
+                      <CardHeader><CardTitle>Current Plan</CardTitle></CardHeader>
+                      <CardContent>
+                        {isLoadingInstitution && <div className="space-y-4"><Skeleton className="h-8 w-1/2" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-3/4" /></div>}
+                        {institutionError && <p className="text-destructive">Could not load plan details.</p>}
+                        {institution && (
+                          <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                              <span className="text-2xl font-semibold capitalize">{institution.plan}</span>
+                              <Badge variant={institution.status === 'active' || institution.status === 'trialing' ? 'success' : 'destructive'} className="capitalize">{institution.status}</Badge>
+                            </div>
+                            <Separator />
+                            {institution.nextBilling && (
+                              <div>
+                                <p className="text-sm text-muted-foreground">Next billing date</p>
+                                <p className="font-medium">{new Date(institution.nextBilling * 1000).toLocaleDateString()}</p>
+                              </div>
+                            )}
                           </div>
                         )}
-                      </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                  <motion.div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8" variants={containerVariants}>
+                    {tiers.map((tier) => (
+                      <motion.div key={tier.name} variants={itemVariants}>
+                        <Card className={`flex flex-col h-full ${tier.highlight ? 'border-primary ring-1 ring-primary shadow-lg' : ''}`}>
+                          <CardHeader>
+                            <CardTitle className="text-2xl">{tier.name}</CardTitle>
+                            <CardDescription>{tier.description}</CardDescription>
+                            <div className="pt-4"><span className="text-4xl font-bold">{tier.price}</span><span className="text-muted-foreground">{tier.priceSuffix}</span></div>
+                          </CardHeader>
+                          <CardContent className="flex-1">
+                            <ul className="space-y-2">{tier.features.map((feature) => (<li key={feature} className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> <span className="text-sm">{feature}</span></li>))}</ul>
+                          </CardContent>
+                          <CardContent>
+                            {institution?.plan === tier.plan ? <Button disabled className="w-full">Current Plan</Button> :
+                             tier.plan === 'pro' ? (
+                              <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
+                                <DialogTrigger asChild><Button className="w-full"><Star className="mr-2 h-4 w-4" /> Request Quote</Button></DialogTrigger>
+                                <DialogContent className="sm:max-w-lg">
+                                  <DialogHeader><DialogTitle>Request Pro Quote</DialogTitle><DialogDescription>We'll customize a plan for your needs.</DialogDescription></DialogHeader>
+                                  <Form {...form}>
+                                    <form onSubmit={form.handleSubmit((d) => quoteMutation.mutate({ ...d, tenantId: institution?.id }))} className="space-y-4 pt-4">
+                                      <FormField name="institutionSize" control={form.control} render={({ field }) => <FormItem><FormLabel>Institution Size</FormLabel><FormControl><Textarea placeholder="e.g., 200 students, K-12" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                      <FormField name="needs" control={form.control} render={({ field }) => <FormItem><FormLabel>Key Needs</FormLabel><FormControl><Textarea placeholder="e.g., AI tutor integration, custom branding" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                      <FormField name="timeline" control={form.control} render={({ field }) => <FormItem><FormLabel>Timeline</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger></FormControl><SelectContent><SelectItem value="ASAP">ASAP</SelectItem><SelectItem value="1-3 months">1-3 months</SelectItem><SelectItem value="Discuss">Let's Discuss</SelectItem></SelectContent></Select><FormMessage /></FormItem>} />
+                                      <FormField name="adminEmail" control={form.control} render={({ field }) => <FormItem><FormLabel>Contact Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                      <Button type="submit" className="w-full" disabled={quoteMutation.isPending}>{quoteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Submit Request'}</Button>
+                                    </form>
+                                  </Form>
+                                </DialogContent>
+                              </Dialog>
+                             ) :
+                             <Button variant="outline" className="w-full" onClick={() => trialMutation.mutate()} disabled={trialMutation.isPending}>Start 30-Day Trial</Button>
+                            }
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    ))}
+                  </motion.div>
+                </div>
+              </motion.div>
+            </TabsContent>
+          )}
+          {isStudentOrTeacher && (
+            <TabsContent value="student" className="mt-8">
+              <motion.div variants={itemVariants} initial="hidden" animate="visible">
+                <Card>
+                  <CardHeader><CardTitle>My Subscriptions</CardTitle><CardDescription>Your active and past subscriptions for premium content.</CardDescription></CardHeader>
+                  <CardContent>
+                    {isLoadingStudentSubs && <Skeleton className="h-32 w-full" />}
+                    {studentSubsError && <p className="text-destructive">Could not load your subscriptions.</p>}
+                    {studentSubscriptions && (
+                      studentSubscriptions.length === 0 ? <p className="text-muted-foreground text-center py-8">You have no active subscriptions. Upgrade to access premium courses.</p> :
+                      <Table>
+                        <TableHeader><TableRow><TableHead>Plan</TableHead><TableHead>Status</TableHead><TableHead>Expires</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                          {studentSubscriptions.map(sub => (
+                            <TableRow key={sub.id}>
+                              <TableCell className="font-medium capitalize">{sub.plan}</TableCell>
+                              <TableCell><Badge variant={sub.status === 'active' ? 'success' : 'secondary'} className="capitalize">{sub.status}</Badge></TableCell>
+                              <TableCell>{new Date(sub.expiry * 1000).toLocaleDateString()}</TableCell>
+                              <TableCell className="text-right">
+                                {sub.status === 'active' && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild><Button variant="destructive" size="sm" disabled={cancelStudentSubMutation.isPending}>Cancel</Button></AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader><AlertDialogTitle>Cancel Subscription?</AlertDialogTitle><AlertDialogDescription>Your premium access will remain active until the expiry date.</AlertDialogDescription></AlertDialogHeader>
+                                      <AlertDialogFooter><AlertDialogCancel>Keep Subscription</AlertDialogCancel><AlertDialogAction onClick={() => cancelStudentSubMutation.mutate(sub.id)}>Confirm Cancellation</AlertDialogAction></AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     )}
                   </CardContent>
                 </Card>
               </motion.div>
-              <motion.div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8" variants={containerVariants} initial="hidden" animate="visible">
-                {tiers.map((tier) => (
-                  <motion.div key={tier.name} variants={itemVariants}>
-                    <Card className={`flex flex-col h-full ${tier.highlight ? 'border-primary ring-1 ring-primary shadow-lg' : ''}`}>
-                      <CardHeader>
-                        <CardTitle className="text-2xl">{tier.name}</CardTitle>
-                        <CardDescription>{tier.description}</CardDescription>
-                        <div className="pt-4"><span className="text-4xl font-bold">{tier.price}</span><span className="text-muted-foreground">{tier.priceSuffix}</span></div>
-                      </CardHeader>
-                      <CardContent className="flex-1">
-                        <ul className="space-y-2">{tier.features.map((feature) => (<li key={feature} className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> <span className="text-sm">{feature}</span></li>))}</ul>
-                      </CardContent>
-                      <CardContent>
-                        {institution?.plan === tier.plan ? <Button disabled className="w-full">Current Plan</Button> :
-                         tier.plan === 'pro' ? (
-                          <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
-                            <DialogTrigger asChild><Button className="w-full"><Star className="mr-2 h-4 w-4" /> Request Quote</Button></DialogTrigger>
-                            <DialogContent className="sm:max-w-lg">
-                              <DialogHeader><DialogTitle>Request Pro Quote</DialogTitle><DialogDescription>We'll customize a plan for your needs.</DialogDescription></DialogHeader>
-                              <Form {...form}>
-                                <form onSubmit={form.handleSubmit((d) => quoteMutation.mutate({ ...d, tenantId: institution?.id }))} className="space-y-4 pt-4">
-                                  <FormField name="institutionSize" control={form.control} render={({ field }) => <FormItem><FormLabel>Institution Size</FormLabel><FormControl><Textarea placeholder="e.g., 200 students, K-12" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                  <FormField name="needs" control={form.control} render={({ field }) => <FormItem><FormLabel>Key Needs</FormLabel><FormControl><Textarea placeholder="e.g., AI tutor integration, custom branding" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                  <FormField name="timeline" control={form.control} render={({ field }) => <FormItem><FormLabel>Timeline</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger></FormControl><SelectContent><SelectItem value="ASAP">ASAP</SelectItem><SelectItem value="1-3 months">1-3 months</SelectItem><SelectItem value="Discuss">Let's Discuss</SelectItem></SelectContent></Select><FormMessage /></FormItem>} />
-                                  <FormField name="adminEmail" control={form.control} render={({ field }) => <FormItem><FormLabel>Contact Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>} />
-                                  <Button type="submit" className="w-full" disabled={quoteMutation.isPending}>{quoteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Submit Request'}</Button>
-                                </form>
-                              </Form>
-                            </DialogContent>
-                          </Dialog>
-                         ) :
-                         <Button variant="outline" className="w-full" onClick={() => trialMutation.mutate()} disabled={trialMutation.isPending}>Start 30-Day Trial</Button>
-                        }
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </motion.div>
-            </div>
-          </TabsContent>
-          <TabsContent value="student" className="mt-8">
-            <Card>
-              <CardHeader><CardTitle>My Subscriptions</CardTitle><CardDescription>Your active and past subscriptions.</CardDescription></CardHeader>
-              <CardContent>
-                {isLoadingStudentSubs && <Skeleton className="h-32 w-full" />}
-                {studentSubsError && <p className="text-destructive">Could not load your subscriptions.</p>}
-                {studentSubscriptions && (
-                  studentSubscriptions.length === 0 ? <p className="text-muted-foreground text-center py-8">You have no active subscriptions.</p> :
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Plan</TableHead><TableHead>Status</TableHead><TableHead>Expires</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {studentSubscriptions.map(sub => (
-                        <TableRow key={sub.id}>
-                          <TableCell className="font-medium capitalize">{sub.plan}</TableCell>
-                          <TableCell><Badge variant={sub.status === 'active' ? 'success' : 'secondary'} className="capitalize">{sub.status}</Badge></TableCell>
-                          <TableCell>{new Date(sub.expiry * 1000).toLocaleDateString()}</TableCell>
-                          <TableCell className="text-right">
-                            {sub.status === 'active' && (
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild><Button variant="destructive" size="sm" disabled={cancelStudentSubMutation.isPending}>Cancel</Button></AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader><AlertDialogTitle>Cancel Subscription?</AlertDialogTitle><AlertDialogDescription>Your premium access will remain active until the expiry date.</AlertDialogDescription></AlertDialogHeader>
-                                  <AlertDialogFooter><AlertDialogCancel>Keep Subscription</AlertDialogCancel><AlertDialogAction onClick={() => cancelStudentSubMutation.mutate(sub.id)}>Confirm Cancellation</AlertDialogAction></AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+            </TabsContent>
+          )}
         </Tabs>
       </div>
     </div>

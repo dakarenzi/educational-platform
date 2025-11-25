@@ -38,7 +38,6 @@ export function AcademiCloudSidebar() {
     queryFn: fetchInstitution,
   });
   const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
-  const isAdminOrSuperAdmin = user?.role === 'admin' || user?.role === 'super-admin';
   const navItems: { to: string; icon: React.ElementType; label: string; roles?: UserRole[]; external?: boolean }[] = [
     { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { to: '/app/courses', icon: Book, label: 'Courses' },
@@ -47,11 +46,9 @@ export function AcademiCloudSidebar() {
     { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
     { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams', roles: ['admin', 'teacher', 'student'] },
     { to: '/app/resources', icon: FileText, label: 'Resources', roles: ['admin', 'teacher', 'student'] },
+    { to: '/app/billing', icon: CreditCard, label: 'Subscriptions' },
     { to: 'https://community.academicloud.com/discord', icon: MessageCircle, label: 'Community', external: true },
     { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
-  ];
-  const settingsNavItems = [
-    { to: '/app/billing', icon: CreditCard, label: 'Billing', roles: ['admin', 'super-admin'] },
   ];
   const studentNavItems = [
       { to: '/app/my-progress', icon: ClipboardCheck, label: 'My Progress' },
@@ -72,7 +69,6 @@ export function AcademiCloudSidebar() {
   const isStudent = user?.role === 'student';
   const isSuperAdmin = user?.role === 'super-admin';
   const visibleNavItems = navItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
-  const visibleSettingsItems = settingsNavItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
   const NavItem = ({ to, icon: Icon, label, external }: { to: string; icon: React.ElementType; label: string; external?: boolean }) => {
     const commonClasses = 'group flex flex-row items-center gap-4 min-w-0 min-h-[2.5rem] rounded-md px-3 py-2 text-sidebar-foreground transition-all duration-200 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground border-l-2 border-transparent';
     const content = (
@@ -128,12 +124,6 @@ export function AcademiCloudSidebar() {
       <nav className="flex-1 px-2 py-4 space-y-1">
         <TooltipProvider>
           {visibleNavItems.map((item) => <NavItem key={item.label} {...item} />)}
-          {visibleSettingsItems.length > 0 && (
-            <>
-              <Separator className="my-2 bg-sidebar-border" />
-              {visibleSettingsItems.map((item) => <NavItem key={item.label} {...item} />)}
-            </>
-          )}
           {isStudent && (
              <>
               <Separator className="my-2 bg-sidebar-border" />
