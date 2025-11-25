@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import i18n from '@/i18n';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -176,7 +177,7 @@ function LoginForm() {
   );
 }
 export default function LoginPage() {
-  const { i18n } = useTranslation();
+
   if (!i18n.isInitialized) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
