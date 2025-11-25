@@ -23,8 +23,26 @@ export interface ClientErrorReport {
 const app = new Hono<{ Bindings: Env; Variables: AppContext['Variables'] }>();
 app.use('*', logger());
 app.use('/api/*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization', 'X-Mock-Role'] }));
+// Custom monitoring middleware
+app.use('/api/*', async (c, next) => {
+  const start = Date.now();
+  await next();
+  const duration = Date.now() - start;
+  const path = c.req.path;
+  let eventType = 'general_api_call';
+  if (path.includes('/auth/register')) eventType = 'user_registration';
+  if (path.includes('/auth/login')) eventType = 'user_login';
+  if (path.includes('/quiz/submit')) eventType = 'quiz_submission';
+  if (path.includes('/resources') && c.req.method === 'POST') eventType = 'resource_upload';
+  if (path.includes('/tenant-request')) eventType = 'tenant_request';
+  const tenantId = c.get('tenantId') || 'unknown';
+  const userRole = c.get('userRole') || 'unknown';
+  // Structured log for monitoring (simulates sending to an analytics engine)
+  console.log(
+    `[MONITOR] method=${c.req.method} path=${path} status=${c.res.status} duration_ms=${duration} tenant_id=${tenantId} role=${userRole} event=${eventType}`
+  );
+});
 userRoutes(app);
-app.get('/api/health', (c) => c.json({ success: true, data: { status: 'healthy', timestamp: new Date().toISOString() }}));
 app.post('/api/client-errors', async (c) => {
   try {
     const e = await c.req.json<ClientErrorReport>();

@@ -1,4 +1,4 @@
-import '@/lib/errorReporter';
+import { errorReporter } from '@/lib/errorReporter';
 import { enableMapSet } from "immer";
 enableMapSet();
 import { StrictMode } from 'react'
@@ -39,6 +39,32 @@ import TeacherFlashcardsPage from '@/pages/teacher/TeacherFlashcardsPage';
 import TeacherMockExamsPage from '@/pages/teacher/TeacherMockExamsPage';
 import TeacherResourcesPage from '@/pages/teacher/TeacherResourcesPage';
 import TeacherQuizzesPage from '@/pages/teacher/TeacherQuizzesPage';
+// Global Error Handlers
+window.addEventListener('unhandledrejection', (event) => {
+  const error = event.reason || {};
+  errorReporter.report({
+    message: error.message || 'Unhandled promise rejection',
+    stack: error.stack,
+    url: window.location.href,
+    timestamp: new Date().toISOString(),
+    source: 'unhandledrejection',
+    error: event.reason,
+    level: 'error',
+  });
+});
+window.addEventListener('error', (event) => {
+  if (event.error) {
+    errorReporter.report({
+      message: event.message,
+      stack: event.error.stack,
+      url: event.filename,
+      timestamp: new Date().toISOString(),
+      source: 'global-error',
+      error: event.error,
+      level: 'error',
+    });
+  }
+});
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {

@@ -24,7 +24,6 @@ const base64UrlDecode = (str: string): ArrayBuffer => {
   return bytes.buffer;
 };
 const DEFAULT_JWT_SECRET = 'academicloud-secret-key-2024';
-
 const getSigningKey = async (secret: string): Promise<CryptoKey> => {
   // Ensure we never try to import a key from an empty Uint8Array which causes a DataError.
   const secretToUse = (secret && secret.length > 0) ? secret : DEFAULT_JWT_SECRET;
@@ -232,6 +231,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const totalUsers = (await UserEntity.list(c.env, 'inst-1')).items.length; // Mock for one tenant
     const mockRevenue = 599 * totalTenants;
     return ok(c, { totalTenants, totalUsers, mockRevenue });
+  });
+  // HEALTH ENDPOINT
+  app.get('/api/health', async (c) => {
+    if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    await InstitutionEntity.ensureSeed(c.env, 'system');
+    const tenants = await InstitutionEntity.list(c.env, 'system');
+    const mockUsers = await UserEntity.list(c.env, 'inst-1');
+    return ok(c, {
+      status: 'ok',
+      uptime: 0, // process.uptime() is not available in Workers. This is a placeholder.
+      tenantCount: tenants.items.length,
+      activeUsers: mockUsers.items.length, // Mock for one tenant
+      timestamp: new Date().toISOString(),
+    });
   });
   // BILLING SIMULATION
   app.post('/api/billing/subscribe', async (c) => {
