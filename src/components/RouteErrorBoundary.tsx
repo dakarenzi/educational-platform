@@ -11,7 +11,11 @@ export function RouteErrorBoundary() {
       if (isRouteErrorResponse(error)) {
         errorMessage = `Route Error ${error.status}: ${error.statusText}`;
         if (error.data) {
-          errorMessage += ` - ${JSON.stringify(error.data)}`;
+          try {
+            errorMessage += ` - ${JSON.stringify(error.data)}`;
+          } catch {
+            errorMessage += ' - (Unserializable data)';
+          }
         }
       } else if (error instanceof Error) {
         errorMessage = error.message;
