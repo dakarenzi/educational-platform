@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { User } from '@shared/types';
 
 interface AuthState {
@@ -109,28 +109,49 @@ state = {
 // Ensure persisted state is saved in case defaults differ
 persist(state);
 
- // Exported hook using useSyncExternalStore for stable subscriptions
+ // Exported hook using a stable subscription-based implementation (useState/useEffect)
+ // to avoid runtime issues with useSyncExternalStore in some environments.
  export function useAuthStore<T>(selector: (s: AuthState) => T): T {
-   return useSyncExternalStore(
-     subscribe,
-     () => {
+   const selectorRef = useRef(selector);
+   // keep latest selector reference to avoid resubscribing when selector identity changes
+   selectorRef.current = selector;
+
+   const getSelected = (): T => {
+     try {
+       return selectorRef.current(getState());
+     } catch {
+       // swallow selector errors and return undefined typed as T
+       return undefined as any as T;
+     }
+   };
+
+   const [selected, setSelected] = useState<T>(() => getSelected());
+   const selectedRef = useRef<T>(selected);
+   // keep current selected value in a ref for stable comparisons inside subscriber
+   selectedRef.current = selected;
+
+   useEffect(() => {
+     const check = () => {
        try {
-         return selector(getState());
+         const next = selectorRef.current(getState());
+         if (next !== selectedRef.current) {
+           selectedRef.current = next;
+           setSelected(next);
+         }
        } catch {
          // swallow selector errors to avoid breaking components
-         return undefined as any as T;
        }
-     },
-     () => {
-       try {
-         return selector(getState());
-       } catch {
-         return undefined as any as T;
-       }
-     }
-   );
+     };
+
+     // run once to ensure initial sync, then subscribe for updates
+     check();
+     const unsubscribe = subscribe(check);
+     return unsubscribe;
+   }, []);
+
+   return selected;
  }
 
-// Expose getState on the hook for parity with prior API
-// (useAuthStore as any).getState will be available to consumers
-;(useAuthStore as any).getState = getState;
+ // Expose getState on the hook for parity with prior API
+ // (useAuthStore as any).getState will be available to consumers
+ ;(useAuthStore as any).getState = getState;
