@@ -79,7 +79,8 @@ function updateWranglerJsonc() {
 function runSetupCommands() {
     const commands = [
     "bun install react-dom-confetti",
-    "bun install uuid"
+    "bun install uuid",
+    "bun install i18next react-i18next i18next-browser-languagedetector"
 ];
     
     if (commands.length === 0) {
