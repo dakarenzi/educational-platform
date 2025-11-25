@@ -13,7 +13,8 @@ import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { authActions } from '@/store/auth';
 import { api } from '@/lib/api-client';
-import type { LoginResponse } from '@shared/types';
+import type { LoginResponse, UserRole } from '@shared/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 const loginSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(1, 'Password is required.'),
@@ -22,11 +23,11 @@ const registerSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   email: z.string().email('Invalid email address.'),
   password: z.string().min(8, 'Password must be at least 8 characters.'),
+  role: z.enum(['student', 'teacher', 'admin', 'super-admin']).default('student'),
 });
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function LoginPage() {
-  // Hooks must be called at the top level
   const navigate = useNavigate();
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -34,7 +35,7 @@ export default function LoginPage() {
   });
   const registerForm = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
-    defaultValues: { name: '', email: '', password: '' },
+    defaultValues: { name: '', email: '', password: '', role: 'student' },
   });
   const loginMutation = useMutation({
     mutationFn: (data: LoginFormValues) => api<LoginResponse>('/api/auth/login', {
@@ -44,7 +45,11 @@ export default function LoginPage() {
     onSuccess: (data) => {
       authActions.login(data.user, data.token);
       toast.success(`Welcome back, ${data.user.name}!`);
-      navigate(data.user.role === 'super-admin' ? '/app/super-admin' : '/app/dashboard');
+      if (data.user.role === 'super-admin') {
+        navigate('/app/super-admin');
+      } else {
+        navigate('/app/dashboard');
+      }
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Login failed.'),
   });
@@ -89,10 +94,10 @@ export default function LoginPage() {
                   <Form {...loginForm}>
                     <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
                       <FormField control={loginForm.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={loginForm.control} name="password" render={({ field }) => (
-                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                         {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -107,20 +112,43 @@ export default function LoginPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Register</CardTitle>
-                  <CardDescription>Create a new student account.</CardDescription>
+                  <CardDescription>Create a new account.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Form {...registerForm}>
                     <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} className="space-y-4">
                       <FormField control={registerForm.control} name="name" render={({ field }) => (
-                        <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={registerForm.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={registerForm.control} name="password" render={({ field }) => (
-                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
+                       <FormField
+                        control={registerForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Role</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={registerMutation.isPending}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a role" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="student">Student</SelectItem>
+                                <SelectItem value="teacher">Teacher</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="super-admin">Super Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                       <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                         {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Create Account

@@ -17,7 +17,7 @@ import {
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { useAuthStore } from '@/store/auth';
+import { useAuthStore, authActions } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { api } from '@/lib/api-client';
 import type { Institution, UserRole } from '@shared/types';
@@ -31,7 +31,6 @@ const fetchInstitution = async (): Promise<Institution> => {
 };
 export function AcademiCloudSidebar() {
   const user = useAuthStore(s => s.user);
-  const logout = useAuthStore(s => s.logout);
   const navigate = useNavigate();
   const { data: institution, isLoading } = useQuery({
     queryKey: ['institution'],
@@ -59,7 +58,7 @@ export function AcademiCloudSidebar() {
       { to: '/app/super-admin', icon: Shield, label: 'Super Admin' },
   ];
   const handleLogout = () => {
-    logout();
+    authActions.logout();
     navigate('/');
   };
   const getInitials = (name: string) => {

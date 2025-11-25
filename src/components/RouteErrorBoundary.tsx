@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { errorReporter } from '@/lib/errorReporter';
 import { ErrorFallback } from './ErrorFallback';
 export function RouteErrorBoundary() {
-  // Call the hook unconditionally at the top level of the component.
   const error = useRouteError();
   useEffect(() => {
     if (error) {
@@ -37,8 +36,16 @@ export function RouteErrorBoundary() {
       });
     }
   }, [error]);
-  // Render error UI using shared ErrorFallback component
   if (isRouteErrorResponse(error)) {
+    if (error.status === 404) {
+      return (
+        <ErrorFallback
+          title="Page Not Found"
+          message="Sorry, the page you are looking for does not exist."
+          statusMessage="404 Error"
+        />
+      );
+    }
     return (
       <ErrorFallback
         title={`${error.status} ${error.statusText}`}
