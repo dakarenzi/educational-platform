@@ -37,9 +37,6 @@ export function RouteErrorBoundary() {
       console.error("Error while reporting the route error:", reportingError);
     }
   }, [error]);
-  if (!error) {
-    return <ErrorFallback title="Unknown Error" message="An unexpected error occurred." />;
-  }
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
       return (
