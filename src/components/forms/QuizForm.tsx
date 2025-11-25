@@ -13,7 +13,9 @@ const questionSchema = z.object({
   id: z.string(),
   text: z.string().min(5, 'Question text must be at least 5 characters.'),
   options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
-  correctAnswer: z.number().int().min(0).max(3),
+  correctAnswer: z.number({
+    invalid_type_error: "You must select a correct answer.",
+  }).int().min(0).max(3),
 });
 const quizFormSchema = z.object({
   title: z.string().min(3, 'Quiz title must be at least 3 characters.'),

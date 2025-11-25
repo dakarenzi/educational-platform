@@ -104,9 +104,10 @@ export const createAuthStore = () => {
         }
       };
       checkForUpdates();
-      const unsubscribe = () => subscribers.delete(checkForUpdates);
       subscribers.add(checkForUpdates);
-      return unsubscribe;
+      return () => {
+        subscribers.delete(checkForUpdates);
+      };
     }, [getSelected]);
     return selectedValue;
   };
