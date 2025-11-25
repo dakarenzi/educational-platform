@@ -120,12 +120,13 @@ export default function BillingPage() {
   ];
   const studentTiers = [
     { name: 'Free', price: '$0', priceSuffix: '/mo', description: 'Basic access to the platform.', features: ['Access free courses', 'Take quizzes'], plan: 'free' },
-    { name: 'Basic', price: '$4.99', priceSuffix: '/mo', description: 'Essential learning tools.', features: ['Unlimited quizzes', 'Basic AI Tutor help'], plan: 'basic' },
-    { name: 'Pro', price: '$7.99', priceSuffix: '/mo', description: 'Full access to all features.', features: ['Full AI Tutor capabilities', 'Access all premium courses', 'Personal analytics'], plan: 'pro', highlight: true },
+    { name: 'Basic', price: '$7.99', priceSuffix: '/mo', description: 'Essential learning tools.', features: ['Unlimited quizzes', 'Basic AI Tutor help'], plan: 'basic' },
+    { name: 'Pro', price: '$16.99', priceSuffix: '/mo', description: 'Full access to all features.', features: ['Full AI Tutor capabilities', 'Access all premium courses', 'Personal analytics'], plan: 'pro', highlight: true },
   ];
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
   const defaultTab = isStudentOrTeacher ? 'student' : 'institution';
+  const selectedPrice = selectedTier === 'basic' ? '$7.99' : '$16.99';
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 md:py-10 lg:py-12">
@@ -261,7 +262,7 @@ export default function BillingPage() {
                           </RadioGroup>
                           <Button className="bg-amber-400 hover:bg-amber-500 text-foreground" onClick={() => createStudentSubMutation.mutate({ plan: selectedTier })} disabled={createStudentSubMutation.isPending}>
                             {createStudentSubMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Upgrade to {selectedTier === 'basic' ? 'Basic' : 'Pro'}
+                            Upgrade to {selectedTier.charAt(0).toUpperCase() + selectedTier.slice(1)} - {selectedPrice}/mo
                           </Button>
                         </div>
                       )

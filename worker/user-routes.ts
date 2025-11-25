@@ -398,8 +398,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tenantId = (c as any).get('tenantId');
     if (!userId) return bad(c, 'Unauthorized');
     const now = Math.floor(Date.now() / 1000);
-    const expiry = plan === 'basic' ? now + 2592000 : now + 7776000; // 30 or 90 days
-    const price = plan === 'basic' ? 4.99 : 7.99;
+    const expiry = plan === 'basic' ? now + 7776000 : now + 15552000; // 90 or 180 days
+    const price = plan === 'basic' ? 7.99 : 16.99;
     const paymentId = `mock_stripe_${plan}_${crypto.randomUUID()}`;
     const userEntity = new UserEntity(c.env, userId);
     await userEntity.patch({ subscriptionStatus: 'premium', subscriptionTier: plan, paymentId, expiry });
@@ -415,7 +415,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     };
     await StudentSubscriptionEntity.create(c.env, tenantId, sub);
     console.log(`[MONITOR] event=student_subscription_${plan} userId=${userId} tenantId=${tenantId} price=${price}`);
-    console.log(`[STRIPE MOCK] Created ${plan} subscription for user ${userId} with price ID simulation.`);
+    console.log(`[STRIPE MOCK] Created ${plan} subscription for user ${userId} at ${price}/mo.`);
     return ok(c, { sessionUrl: '/app/billing?success=true' });
   });
   app.put('/api/student/subscriptions/:id/cancel', async (c) => {
