@@ -77,7 +77,7 @@ export default function QuizTakerPage() {
   if (isFinished) {
     return (
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center flex flex-col items-center">
-        <Confetti active={percentage >= 80} config={{ angle: 90, spread: 360, startVelocity: 40, elementCount: 70, dragFriction: 0.12, duration: 3000, stagger: 3, width: "10px", height: "10px", perspective: "500px" }} />
+        <Confetti active={percentage >= 80} config={{ angle: 90, spread: 360, startVelocity: 40, elementCount: 70, dragFriction: 0.12, duration: 3000, stagger: 3, width: "10px", height: "10px" }} />
         <Award className="h-24 w-24 text-amber-400 mx-auto mb-4" />
         <h1 className="text-4xl font-bold font-display">Quiz Complete!</h1>
         <p className="text-xl text-muted-foreground mt-2">You scored</p>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import type { User } from '@shared/types';
 interface AuthState {
   user: User | null;
@@ -80,14 +80,14 @@ export const createAuthStore = () => {
   const useAuthStore = <T>(selector: (s: AuthState) => T): T => {
     const selectorRef = useRef(selector);
     selectorRef.current = selector;
-    const getSelected = (): T => {
+    const getSelected = useCallback((): T => {
       try {
         return selectorRef.current(state);
       } catch (e) {
         console.error("Auth store selector failed:", e);
         return undefined as any as T;
       }
-    };
+    }, []);
     const [selectedValue, setSelectedValue] = useState(() => getSelected());
     const selectedValueRef = useRef(selectedValue);
     selectedValueRef.current = selectedValue;
@@ -107,7 +107,7 @@ export const createAuthStore = () => {
       const unsubscribe = () => subscribers.delete(checkForUpdates);
       subscribers.add(checkForUpdates);
       return unsubscribe;
-    }, []);
+    }, [getSelected]);
     return selectedValue;
   };
   (useAuthStore as any).getState = () => state;

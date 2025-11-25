@@ -17,7 +17,7 @@ const questionSchema = z.object({
   id: z.string(),
   text: z.string().min(5, 'Question text must be at least 5 characters.'),
   options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
-  correctAnswer: z.number({ required_error: "Please select a correct answer." }).int().min(0).max(3),
+  correctAnswer: z.number().int().min(0).max(3),
 });
 const quizFormSchema = z.object({
   title: z.string().min(3, 'Quiz title must be at least 3 characters.'),
@@ -55,7 +55,8 @@ export default function QuizCreatorPage() {
   });
   const onSubmit = (values: QuizFormValues) => {
     if (!lessonId) return;
-    createQuizMutation.mutate({ ...values, lessonId, tenantId: 'inst-1' });
+    // tenantId is handled by the backend middleware
+    createQuizMutation.mutate({ ...values, lessonId });
   };
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
