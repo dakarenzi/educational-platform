@@ -29,9 +29,9 @@ const registerSchema = z.object({
 });
 type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
-export default function LoginPage() {
+function LoginForm() {
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema) as any,
     defaultValues: { email: '', password: '' },
@@ -56,7 +56,10 @@ export default function LoginPage() {
         navigate('/app/dashboard');
       }
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Login failed.'),
+    onError: (err) => {
+      console.error('Login error:', err);
+      toast.error(err instanceof Error ? err.message : 'Login failed.');
+    },
   });
   const registerMutation = useMutation({
     mutationFn: (data: RegisterFormValues) => api<LoginResponse>('/api/auth/register', {
@@ -74,11 +77,112 @@ export default function LoginPage() {
         navigate('/app/dashboard');
       }
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Registration failed.'),
+    onError: (err) => {
+      console.error('Registration error:', err);
+      toast.error(err instanceof Error ? err.message : 'Registration failed.');
+    },
   });
-  // Prevent rendering until i18n is ready, which can cause hook context issues.
+  return (
+    <>
+      <div className="text-center mb-12">
+        <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground">
+          {t('welcome')}
+        </h1>
+        <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
+          The illustrative educational platform to create, manage, and deliver engaging online learning experiences.
+        </p>
+      </div>
+      <Tabs defaultValue="login" className="w-full max-w-md mx-auto">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="login">{t('login')}</TabsTrigger>
+          <TabsTrigger value="register">{t('register')}</TabsTrigger>
+        </TabsList>
+        <TabsContent value="login">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('login')}</CardTitle>
+              <CardDescription>Enter your credentials to access your account.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...loginForm}>
+                <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
+                  <FormField control={loginForm.control} name="email" render={({ field }) => (
+                    <FormItem><FormLabel>{t('email')}</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={loginForm.control} name="password" render={({ field }) => (
+                    <FormItem><FormLabel>{t('password')}</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                    {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('login')}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="register">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('register')}</CardTitle>
+              <CardDescription>Create a new account.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...registerForm}>
+                <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} className="space-y-4">
+                  <FormField control={registerForm.control} name="name" render={({ field }) => (
+                    <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={registerForm.control} name="email" render={({ field }) => (
+                    <FormItem><FormLabel>{t('email')}</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={registerForm.control} name="password" render={({ field }) => (
+                    <FormItem><FormLabel>{t('password')}</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                   <FormField
+                    control={registerForm.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={registerMutation.isPending}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a role" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="student">{t('student')}</SelectItem>
+                            <SelectItem value="teacher">{t('teacher')}</SelectItem>
+                            <SelectItem value="admin">{t('admin')}</SelectItem>
+                            <SelectItem value="super-admin">{t('super-admin')}</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                    {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    {t('createAccount')}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+}
+export default function LoginPage() {
+  const { i18n } = useTranslation();
   if (!i18n.isInitialized) {
-    return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
   }
   return (
     <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
@@ -89,94 +193,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(217,216,255,0.5),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(38,38,97,0.6),rgba(10,10,20,0))] -z-10" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="py-8 md:py-10 lg:py-12">
-          <div className="text-center mb-12">
-            <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground">
-              {t('welcome')}
-            </h1>
-            <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-              The illustrative educational platform to create, manage, and deliver engaging online learning experiences.
-            </p>
-          </div>
-          <Tabs defaultValue="login" className="w-full max-w-md mx-auto">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">{t('login')}</TabsTrigger>
-              <TabsTrigger value="register">{t('register')}</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('login')}</CardTitle>
-                  <CardDescription>Enter your credentials to access your account.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...loginForm}>
-                    <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
-                      <FormField control={loginForm.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel>{t('email')}</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      <FormField control={loginForm.control} name="password" render={({ field }) => (
-                        <FormItem><FormLabel>{t('password')}</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
-                        {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {t('login')}
-                      </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-            <TabsContent value="register">
-              <Card>
-                <CardHeader>
-                  <CardTitle>{t('register')}</CardTitle>
-                  <CardDescription>Create a new account.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Form {...registerForm}>
-                    <form onSubmit={registerForm.handleSubmit((d) => registerMutation.mutate(d))} className="space-y-4">
-                      <FormField control={registerForm.control} name="name" render={({ field }) => (
-                        <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      <FormField control={registerForm.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel>{t('email')}</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                      <FormField control={registerForm.control} name="password" render={({ field }) => (
-                        <FormItem><FormLabel>{t('password')}</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
-                      )} />
-                       <FormField
-                        control={registerForm.control}
-                        name="role"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Role</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={registerMutation.isPending}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select a role" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="student">{t('student')}</SelectItem>
-                                <SelectItem value="teacher">{t('teacher')}</SelectItem>
-                                <SelectItem value="admin">{t('admin')}</SelectItem>
-                                <SelectItem value="super-admin">{t('super-admin')}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
-                        {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {t('createAccount')}
-                      </Button>
-                    </form>
-                  </Form>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+          <LoginForm />
         </div>
       </div>
       <footer className="absolute bottom-6 text-center text-muted-foreground/80 text-sm">

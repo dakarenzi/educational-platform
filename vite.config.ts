@@ -7,9 +7,13 @@ export default defineConfig({
   plugins: [
     react(),
     // Explicitly configure the Cloudflare plugin to ensure Miniflare (Worker emulation) runs correctly.
-    // The compatibility_date should match the one in wrangler.jsonc.
     cloudflare({
       compatibilityDate: '2025-04-24',
+      miniflare: {
+        // These options help ensure a fresh state on each run during development
+        disableCache: true,
+        disablePersistentCache: true,
+      },
     })
   ],
   resolve: {
@@ -18,21 +22,30 @@ export default defineConfig({
       '@shared': path.resolve(__dirname, './shared'),
     },
   },
-  // This helps Vite's dependency scanner and can prevent issues.
   optimizeDeps: {
+    // Exclude miniflare from dependency optimization to prevent build issues.
+    exclude: ['miniflare'],
     include: ['react', 'react-dom', 'react-router-dom', 'hono'],
   },
   server: {
-    // This proxy is essential for local development to route /api calls to the wrangler dev server.
-    // Wrangler's default port is 8787.
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8787',
         changeOrigin: true,
+        // Add an error handler to prevent crashes from websocket or other proxy errors.
+        configure: (proxy) => {
+          proxy.on('error', (err, req, res) => {
+            console.warn('Proxy error (non-fatal):', err.message);
+            if (!res.headersSent) {
+              res.writeHead(502, { 'Content-Type': 'text/plain' });
+              res.end('Proxy Error: Service temporarily unavailable.');
+            }
+          });
+        },
       },
     },
   },
   build: {
-    target: 'esnext', // Ensure modern JS for Cloudflare Workers environment
+    target: 'esnext',
   }
 })

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { User, JWTPayload } from '@shared/types';
 import { api } from '@/lib/api-client';
+import React, { useEffect } from 'react';
 interface AuthState {
   user: User | null;
   token: string | null;
@@ -54,7 +55,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: null, token: null, isAuthenticated: false });
     },
     initialize: async () => {
-      if (get().isInitialized || !isLocalStorageAvailable()) {
+      if (get().isInitialized) {
+        return;
+      }
+      if (!isLocalStorageAvailable()) {
+        set({ isInitialized: true });
         return;
       }
       try {
@@ -81,5 +86,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 }));
 // Expose actions for non-hook usage
 export const authActions = useAuthStore.getState().actions;
-// Initialize auth state on app load
-authActions.initialize();
+// Create a component to handle initialization within the React lifecycle
+export function AuthInitializer() {
+  const initialize = useAuthStore(s => s.actions.initialize);
+  const isInitialized = useAuthStore(s => s.isInitialized);
+  useEffect(() => {
+    if (!isInitialized) {
+      initialize();
+    }
+  }, [initialize, isInitialized]);
+  return null; // This component renders nothing
+}

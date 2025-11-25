@@ -64,6 +64,7 @@ export function RouteErrorBoundary() {
       />
     );
   }
+  // Fallback for non-RouteErrorResponse errors or if error is null/undefined
   return (
     <ErrorFallback
       title="Unexpected Error"
