@@ -81,7 +81,8 @@ function runSetupCommands() {
     "bun install react-dom-confetti",
     "bun install uuid",
     "bun install i18next react-i18next i18next-browser-languagedetector",
-    "bun install stripe @types/stripe"
+    "bun install stripe @types/stripe",
+    "bun install @radix-ui/react-label"
 ];
     
     if (commands.length === 0) {
