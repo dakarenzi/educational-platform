@@ -5,6 +5,9 @@ import { useAuthStore } from "@/store/auth";
 import { Toaster } from "@/components/ui/sonner";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
+import { GDPRConsentBanner } from "@/components/GDPRConsentBanner";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { LanguageToggle } from "@/components/LanguageToggle";
 export function AppLayout({ children }: { children?: React.ReactNode }): JSX.Element {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated);
   const isInitialized = useAuthStore(s => s.isInitialized);
@@ -28,7 +31,11 @@ export function AppLayout({ children }: { children?: React.ReactNode }): JSX.Ele
   return (
     <div className="flex h-screen bg-muted/40">
       <AcademiCloudSidebar />
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden relative">
+        <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+          <LanguageToggle />
+          <ThemeToggle className="relative top-0 right-0" />
+        </div>
         <div className="flex-1 overflow-y-auto">
           <ErrorBoundary>
             {children || <Outlet />}
@@ -36,6 +43,7 @@ export function AppLayout({ children }: { children?: React.ReactNode }): JSX.Ele
         </div>
       </main>
       <Toaster richColors position="bottom-right" />
+      <GDPRConsentBanner />
     </div>
   );
 }

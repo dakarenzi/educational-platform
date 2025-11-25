@@ -4,6 +4,7 @@ import { PlusCircle, CheckCircle, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/lib/api-client';
 import type { Course, Enrollment } from '@shared/types';
 import { useAuthStore } from '@/store/auth';
@@ -23,6 +24,7 @@ export default function CoursesPage() {
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const user = useAuthStore(s => s.user);
   const queryClient = useQueryClient();
+  const { t } = useTranslation();
   const { data: courses, isLoading: isLoadingCourses, error: coursesError } = useQuery({
     queryKey: ['courses'],
     queryFn: fetchCourses,
@@ -86,20 +88,20 @@ export default function CoursesPage() {
       <div className="py-8 md:py-10 lg:py-12">
         <div className="flex justify-between items-center mb-12">
           <div>
-            <h1 className="text-4xl font-bold font-display text-foreground">Courses</h1>
-            <p className="mt-2 text-lg text-muted-foreground">Discover and enroll in courses.</p>
+            <h1 className="text-4xl font-bold font-display text-foreground">{t('courses')}</h1>
+            <p className="mt-2 text-lg text-muted-foreground">{t('discoverCourses')}</p>
           </div>
           {isTeacherOrAdmin && (
             <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button size="lg" className="gap-2">
                   <PlusCircle className="h-5 w-5" />
-                  Create Course
+                  {t('createCourse')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Create a New Course</DialogTitle>
+                  <DialogTitle>{t('createCourse')}</DialogTitle>
                   <DialogDescription>Fill in the details below to create a new course.</DialogDescription>
                 </DialogHeader>
                 <CourseForm onSubmit={handleCreateCourse} isLoading={createCourseMutation.isPending} />
@@ -145,12 +147,12 @@ export default function CoursesPage() {
                       {isStudent && (
                         isEnrolled ? (
                           <Button asChild className="w-full">
-                            <Link to={`/app/courses/${course.id}`}>Go to Course</Link>
+                            <Link to={`/app/courses/${course.id}`}>{t('goToCourse')}</Link>
                           </Button>
                         ) : (
                           <Button className="w-full" onClick={() => enrollMutation.mutate(course.id)} disabled={enrollMutation.isPending}>
                             {enrollMutation.isPending && enrollMutation.variables === course.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Enroll Now
+                            {t('enrollNow')}
                           </Button>
                         )
                       )}

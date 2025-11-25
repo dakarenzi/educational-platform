@@ -24,6 +24,12 @@ AcademiCloud is designed for scalability with a robust tenant management system:
 *   **Routing:** React Router
 *   **Language:** TypeScript
 *   **Schema Validation:** Zod
+## 🌐 Internationalization (i18n)
+AcademiCloud supports English and French. Use the LanguageToggle in the header to switch. Translations cover core UI (login, dashboard, etc.) via react-i18next. Institution languages auto-detect on login. Add new strings to src/locales/{en,fr}.json.
+## 🔒 Compliance & Privacy
+- **GDPR Consent**: Banner appears on first visit; accept/decline stored in localStorage. Declining disables analytics.
+- **Data Export**: Super-admins can export tenant/user data (quizzes/submissions, anonymized) as JSON/CSV via /api/export-data?tenantId=xxx.
+- **Privacy Policy**: We do not store unnecessary PII; exports are audited. For full policy, contact support@academicloud.com. Compliance simulated; integrate real D1 for production.
 ## 🚀 Getting Started
 ### Prerequisites
 *   [Bun](https://bun.sh/) (v1.0 or higher)
@@ -35,6 +41,7 @@ AcademiCloud is designed for scalability with a robust tenant management system:
     cd academcloud_educational_platform
     bun install
     ```
+    i18n setup complete.
 2.  **Generate Worker Types:**
     ```sh
     bun cf-typegen

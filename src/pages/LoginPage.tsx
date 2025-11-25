@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -15,6 +16,7 @@ import { authActions } from '@/store/auth';
 import { api } from '@/lib/api-client';
 import type { LoginResponse, UserRole } from '@shared/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { LanguageToggle } from '@/components/LanguageToggle';
 const loginSchema = z.object({
   email: z.string().email('Invalid email address.'),
   password: z.string().min(1, 'Password is required.'),
@@ -29,6 +31,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema) as any,
     defaultValues: { email: '', password: '' },
@@ -75,13 +78,16 @@ export default function LoginPage() {
   });
   return (
     <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      <ThemeToggle className="absolute top-6 right-6" />
+      <div className="absolute top-6 right-6 flex items-center gap-2">
+        <LanguageToggle />
+        <ThemeToggle className="relative top-0 right-0" />
+      </div>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(217,216,255,0.5),rgba(255,255,255,0))] dark:bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(38,38,97,0.6),rgba(10,10,20,0))] -z-10" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="py-8 md:py-10 lg:py-12">
           <div className="text-center mb-12">
             <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground">
-              Welcome to AcademiCloud
+              {t('welcome')}
             </h1>
             <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
               The illustrative educational platform to create, manage, and deliver engaging online learning experiences.
@@ -89,27 +95,27 @@ export default function LoginPage() {
           </div>
           <Tabs defaultValue="login" className="w-full max-w-md mx-auto">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="register">Register</TabsTrigger>
+              <TabsTrigger value="login">{t('login')}</TabsTrigger>
+              <TabsTrigger value="register">{t('register')}</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
               <Card>
                 <CardHeader>
-                  <CardTitle>Login</CardTitle>
+                  <CardTitle>{t('login')}</CardTitle>
                   <CardDescription>Enter your credentials to access your account.</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Form {...loginForm}>
                     <form onSubmit={loginForm.handleSubmit((d) => loginMutation.mutate(d))} className="space-y-4">
                       <FormField control={loginForm.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>{t('email')}</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={loginForm.control} name="password" render={({ field }) => (
-                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>{t('password')}</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} disabled={loginMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
                         {loginMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Login
+                        {t('login')}
                       </Button>
                     </form>
                   </Form>
@@ -119,7 +125,7 @@ export default function LoginPage() {
             <TabsContent value="register">
               <Card>
                 <CardHeader>
-                  <CardTitle>Register</CardTitle>
+                  <CardTitle>{t('register')}</CardTitle>
                   <CardDescription>Create a new account.</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -129,10 +135,10 @@ export default function LoginPage() {
                         <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={registerForm.control} name="email" render={({ field }) => (
-                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>{t('email')}</FormLabel><FormControl><Input type="email" placeholder="you@example.com" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={registerForm.control} name="password" render={({ field }) => (
-                        <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>{t('password')}</FormLabel><FormControl><Input type="password" placeholder="Minimum 8 characters" {...field} disabled={registerMutation.isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                        <FormField
                         control={registerForm.control}
@@ -147,10 +153,10 @@ export default function LoginPage() {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                <SelectItem value="student">Student</SelectItem>
-                                <SelectItem value="teacher">Teacher</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="super-admin">Super Admin</SelectItem>
+                                <SelectItem value="student">{t('student')}</SelectItem>
+                                <SelectItem value="teacher">{t('teacher')}</SelectItem>
+                                <SelectItem value="admin">{t('admin')}</SelectItem>
+                                <SelectItem value="super-admin">{t('super-admin')}</SelectItem>
                               </SelectContent>
                             </Select>
                             <FormMessage />
@@ -159,7 +165,7 @@ export default function LoginPage() {
                       />
                       <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
                         {registerMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Create Account
+                        {t('createAccount')}
                       </Button>
                     </form>
                   </Form>

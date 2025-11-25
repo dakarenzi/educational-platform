@@ -232,6 +232,31 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const mockRevenue = 599 * totalTenants;
     return ok(c, { totalTenants, totalUsers, mockRevenue });
   });
+  app.get('/api/export-data', async (c) => {
+    if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const tenantId = c.req.query('tenantId');
+    const format = c.req.query('format') || 'json'; // 'json' or 'csv'
+    if (!tenantId) return bad(c, 'tenantId query parameter is required.');
+    console.log(`[AUDIT] Data export requested for tenant ${tenantId} by super-admin.`);
+    const users = (await UserEntity.list(c.env, tenantId)).items;
+    const submissions = (await QuizSubmissionEntity.list(c.env, tenantId)).items;
+    const exportData = {
+      tenantId,
+      exportedAt: new Date().toISOString(),
+      users: users.map(u => ({ id: u.id, name: u.name, role: u.role })),
+      submissions,
+    };
+    if (format === 'csv') {
+      let csv = 'userId,userName,userRole,quizId,score,submittedAt\n';
+      const userMap = new Map(users.map(u => [u.id, u]));
+      submissions.forEach(s => {
+        const user = userMap.get(s.studentId);
+        csv += `${s.studentId},${user?.name || 'N/A'},${user?.role || 'N/A'},${s.quizId},${s.score},${s.submittedAt}\n`;
+      });
+      return c.text(csv, 200, { 'Content-Type': 'text/csv', 'Content-Disposition': `attachment; filename="export-${tenantId}.csv"` });
+    }
+    return c.json(exportData, 200, { 'Content-Type': 'application/json', 'Content-Disposition': `attachment; filename="export-${tenantId}.json"` });
+  });
   // HEALTH ENDPOINT
   app.get('/api/health', async (c) => {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);

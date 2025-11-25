@@ -1,20 +1,22 @@
 import { Book, BrainCircuit, ClipboardList, LayoutDashboard, Presentation, Sparkles, FileText, MessageCircle, CheckSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/store/auth';
 export default function DashboardPage() {
   const user = useAuthStore(s => s.user);
+  const { t } = useTranslation();
   const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
   const dashboardItems = [
-    { title: 'Courses', href: '/app/courses', icon: Book, description: 'Manage and browse courses' },
-    { title: 'Quizzes', href: isTeacherOrAdmin ? '/app/teacher/quizzes' : '/app/quizzes', icon: CheckSquare, description: isTeacherOrAdmin ? 'Create quizzes for your lessons' : 'Take quizzes to test your knowledge' },
-    { title: 'Flashcards', href: '/app/flashcards', icon: Presentation, description: 'Study with flashcard decks' },
-    { title: 'AI Tutor', href: '/app/tutor', icon: Sparkles, description: 'Get help from an AI assistant' },
-    { title: 'Mock Exams', href: '/app/mock-exams', icon: ClipboardList, description: 'Take practice tests and track scores' },
-    { title: 'Resources', href: '/app/resources', icon: FileText, description: 'Access learning materials and downloads' },
-    { title: 'Community', href: 'https://community.academicloud.com/discord', icon: MessageCircle, description: 'Connect with peers and collaborate', external: true, roles: ['student', 'teacher', 'admin'] },
-    { title: 'Analytics', href: '/app/analytics', icon: BrainCircuit, description: 'Track learning progress', roles: ['admin', 'teacher'] },
+    { title: t('courses'), href: '/app/courses', icon: Book, description: t('coursesDescription') },
+    { title: t('quizzes'), href: isTeacherOrAdmin ? '/app/teacher/quizzes' : '/app/quizzes', icon: CheckSquare, description: isTeacherOrAdmin ? t('quizzesDescriptionTeacher') : t('quizzesDescriptionStudent') },
+    { title: t('flashcards'), href: '/app/flashcards', icon: Presentation, description: t('flashcardsDescription') },
+    { title: t('aiTutor'), href: '/app/tutor', icon: Sparkles, description: t('aiTutorDescription') },
+    { title: t('mockExams'), href: '/app/mock-exams', icon: ClipboardList, description: t('mockExamsDescription') },
+    { title: t('resources'), href: '/app/resources', icon: FileText, description: t('resourcesDescription') },
+    { title: t('community'), href: 'https://community.academicloud.com/discord', icon: MessageCircle, description: t('communityDescription'), external: true, roles: ['student', 'teacher', 'admin'] },
+    { title: t('analytics'), href: '/app/analytics', icon: BrainCircuit, description: t('analyticsDescription'), roles: ['admin', 'teacher'] },
   ];
   const visibleItems = dashboardItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
   const containerVariants = {
@@ -46,10 +48,10 @@ export default function DashboardPage() {
           transition={{ duration: 0.5 }}
         >
           <h1 className="text-4xl font-bold font-display text-foreground">
-            Welcome back, {user?.name || 'User'}!
+            {t('welcomeBack', { name: user?.name || 'User' })}
           </h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            Here's your central hub for learning and teaching.
+            {t('dashboardDescription')}
           </p>
         </motion.div>
         <motion.div
