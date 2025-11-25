@@ -1,23 +1,18 @@
-import { errorReporter } from '@/lib/errorReporter';
 import { enableMapSet } from "immer";
 enableMapSet();
-import { StrictMode, Suspense, useEffect } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   createBrowserRouter,
   Navigate,
-  RouterProvider,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import '@/index.css'
 import i18n from './i18n';
-import { I18nextProvider, useTranslation } from 'react-i18next';
-import { Loader2 } from 'lucide-react';
-import { Toaster } from '@/components/ui/sonner';
-import { GDPRConsentBanner } from '@/components/GDPRConsentBanner';
-import { AuthInitializer } from '@/store/auth';
+import { I18nextProvider } from 'react-i18next';
+import App from './App';
 // Pages
 import LoginPage from '@/pages/LoginPage';
 import RequestTenantPage from '@/pages/RequestTenantPage';
@@ -47,7 +42,7 @@ import TeacherMockExamsPage from '@/pages/teacher/TeacherMockExamsPage';
 import TeacherResourcesPage from '@/pages/teacher/TeacherResourcesPage';
 import TeacherQuizzesPage from '@/pages/teacher/TeacherQuizzesPage';
 const queryClient = new QueryClient();
-const router = createBrowserRouter([
+export const router = createBrowserRouter([
   {
     path: "/",
     element: <LoginPage />,
@@ -96,66 +91,12 @@ const router = createBrowserRouter([
     ]
   },
 ]);
-function App() {
-  const { i18n } = useTranslation();
-  useEffect(() => {
-    // Global Error Handlers
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      const error = event.reason || {};
-      errorReporter.report({
-        message: error.message || 'Unhandled promise rejection',
-        stack: error.stack,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
-        source: 'unhandledrejection',
-        error: event.reason,
-        level: 'error',
-      });
-    };
-    const handleGlobalError = (event: ErrorEvent) => {
-      if (event.error) {
-        errorReporter.report({
-          message: event.message,
-          stack: event.error.stack,
-          url: event.filename,
-          timestamp: new Date().toISOString(),
-          source: 'global-error',
-          error: event.error,
-          level: 'error',
-        });
-      }
-    };
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    window.addEventListener('error', handleGlobalError);
-    return () => {
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-      window.removeEventListener('error', handleGlobalError);
-    };
-  }, []);
-  if (!i18n.isInitialized) {
-    return (
-      <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  return (
-    <>
-      <AuthInitializer />
-      <RouterProvider router={router} />
-      <Toaster richColors position="bottom-right" />
-      <GDPRConsentBanner />
-    </>
-  );
-}
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <I18nextProvider i18n={i18n}>
-          <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-            <App />
-          </Suspense>
+          <App />
         </I18nextProvider>
       </QueryClientProvider>
     </ErrorBoundary>

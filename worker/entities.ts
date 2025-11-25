@@ -7,8 +7,8 @@ const MOCK_INSTITUTIONS: Institution[] = [
 const MOCK_USERS: User[] = [
   { id: 'user-admin-1', tenantId: 'inst-1', name: 'Dr. Evelyn Reed', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin1' },
   { id: 'user-teacher-1', tenantId: 'inst-1', name: 'Prof. Alan Grant', role: 'teacher', avatarUrl: 'https://i.pravatar.cc/150?u=teacher1' },
-  { id: 'user-student-1', tenantId: 'inst-1', name: 'Sam Neill', role: 'student', avatarUrl: 'https://i.pravatar.cc/150?u=student1', subscriptionStatus: 'free' },
-  { id: 'user-student-2', tenantId: 'inst-1', name: 'Laura Dern', role: 'student', avatarUrl: 'https://i.pravatar.cc/150?u=student2', subscriptionStatus: 'free' },
+  { id: 'user-student-1', tenantId: 'inst-1', name: 'Sam Neill', role: 'student', avatarUrl: 'https://i.pravatar.cc/150?u=student1', subscriptionStatus: 'free', subscriptionTier: 'free' },
+  { id: 'user-student-2', tenantId: 'inst-1', name: 'Laura Dern', role: 'student', avatarUrl: 'https://i.pravatar.cc/150?u=student2', subscriptionStatus: 'free', subscriptionTier: 'free' },
 ];
 const MOCK_COURSES: Course[] = [
     { id: 'course-1', tenantId: 'inst-1', title: 'Introduction to Paleontology', description: 'Discover the world of dinosaurs and ancient life.', teacherId: 'user-teacher-1', imageUrl: 'https://images.unsplash.com/photo-1582573543323-626b11696f43?q=80&w=800' },
@@ -74,7 +74,7 @@ export class InstitutionEntity extends IndexedEntity<Institution> {
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
-  static readonly initialState: User = { id: "", tenantId: "", name: "", role: 'student', subscriptionStatus: 'free' };
+  static readonly initialState: User = { id: "", tenantId: "", name: "", role: 'student', subscriptionStatus: 'free', subscriptionTier: 'free' };
   static seedData = MOCK_USERS;
 }
 // COURSE ENTITY
@@ -173,7 +173,7 @@ export class ResourceEntity extends IndexedEntity<Resource> {
 export class StudentSubscriptionEntity extends IndexedEntity<StudentSubscription> {
   static readonly entityName = "studentSubscription";
   static readonly indexName = "studentSubscriptions";
-  static readonly initialState: StudentSubscription = { id: "", userId: "", tenantId: "", plan: "premium", status: "active", expiry: 0, paymentId: "" };
+  static readonly initialState: StudentSubscription = { id: "", userId: "", tenantId: "", plan: "premium", tier: "basic", status: "active", expiry: 0, paymentId: "" };
   static seedData: StudentSubscription[] = [];
 }
 // PENDING QUOTE ENTITY

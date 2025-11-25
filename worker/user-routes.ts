@@ -86,6 +86,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       role,
       passwordHash,
       subscriptionStatus: 'free',
+      subscriptionTier: 'free',
     };
     await UserEntity.create(c.env, tenantId, newUser);
     const { passwordHash: _, ...userResponse } = newUser;
@@ -152,12 +153,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const event = await c.req.json<any>();
     console.log(`[STRIPE STUDENT MOCK] Event: ${event.type}`);
     if (event.type === 'payment_intent.succeeded') {
-      const { metadata: { userId, tenantId } } = event.data.object;
+      const { metadata: { userId, tenantId, tier } } = event.data.object;
       if (userId && tenantId) {
         const subEntity = new StudentSubscriptionEntity(c.env, `sub_${event.data.object.id}`);
         await subEntity.patch({ status: 'active', expiry: Math.floor(Date.now() / 1000) + 2592000 });
         const userEntity = new UserEntity(c.env, userId);
-        await userEntity.patch({ subscriptionStatus: 'premium' });
+        await userEntity.patch({ subscriptionStatus: 'premium', subscriptionTier: tier || 'basic' });
       }
     }
     return c.text('OK', 200);
@@ -398,20 +399,23 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!userId) return bad(c, 'Unauthorized');
     const now = Math.floor(Date.now() / 1000);
     const expiry = plan === 'basic' ? now + 2592000 : now + 7776000; // 30 or 90 days
-    const paymentId = `pay_${crypto.randomUUID()}`;
+    const price = plan === 'basic' ? 4.99 : 7.99;
+    const paymentId = `mock_stripe_${plan}_${crypto.randomUUID()}`;
     const userEntity = new UserEntity(c.env, userId);
-    await userEntity.patch({ subscriptionStatus: 'premium', paymentId, expiry });
+    await userEntity.patch({ subscriptionStatus: 'premium', subscriptionTier: plan, paymentId, expiry });
     const sub: StudentSubscription = {
       id: crypto.randomUUID(),
       userId,
       tenantId,
-      plan: 'premium', // Storing as 'premium' for user status, but logging the tier
+      plan: 'premium',
+      tier: plan,
       status: 'active',
       expiry,
       paymentId,
     };
     await StudentSubscriptionEntity.create(c.env, tenantId, sub);
-    console.log(`[MONITOR] event=student_subscription_${plan} userId=${userId} tenantId=${tenantId}`);
+    console.log(`[MONITOR] event=student_subscription_${plan} userId=${userId} tenantId=${tenantId} price=${price}`);
+    console.log(`[STRIPE MOCK] Created ${plan} subscription for user ${userId} with price ID simulation.`);
     return ok(c, { sessionUrl: '/app/billing?success=true' });
   });
   app.put('/api/student/subscriptions/:id/cancel', async (c) => {
@@ -421,7 +425,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!(await subEntity.exists()) || (await subEntity.getState()).userId !== userId) return bad(c, 'Not found');
     await subEntity.patch({ status: 'canceled' });
     const userEntity = new UserEntity(c.env, userId);
-    await userEntity.patch({ subscriptionStatus: 'free', paymentId: '', expiry: 0 });
+    await userEntity.patch({ subscriptionStatus: 'free', subscriptionTier: 'free', paymentId: '', expiry: 0 });
     return ok(c, { success: true });
   });
   // INSTITUTION

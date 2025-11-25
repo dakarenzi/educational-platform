@@ -28,6 +28,7 @@ export interface User {
   passwordHash?: string;
   // Student Subscription Fields
   subscriptionStatus?: 'free' | 'premium';
+  subscriptionTier?: 'free' | 'basic' | 'pro';
   paymentId?: string;
   expiry?: number; // Unix timestamp
 }
@@ -146,6 +147,7 @@ export interface StudentSubscription {
   userId: string;
   tenantId: string;
   plan: 'premium';
+  tier: 'basic' | 'pro';
   status: 'active' | 'canceled';
   expiry: number; // Unix timestamp
   paymentId: string;

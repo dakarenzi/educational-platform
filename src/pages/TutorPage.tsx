@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Sparkles, Send, Loader2, Languages, MessageSquare, BookText, Lightbulb, HelpCircle } from 'lucide-react';
+import { Sparkles, Send, Loader2, Languages, MessageSquare, BookText, Lightbulb, HelpCircle, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -11,6 +11,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
+import { Link } from 'react-router-dom';
 interface Message {
   id: number;
   text: string;
@@ -18,12 +21,12 @@ interface Message {
 }
 type TutorAction = 'message' | 'summarize' | 'explain' | 'quiz-me';
 type Language = 'en' | 'fr';
-const actionIcons = {
+const actionIcons: Record<Exclude<TutorAction, 'message'>, React.ElementType> = {
   summarize: BookText,
   explain: Lightbulb,
   'quiz-me': HelpCircle,
 };
-const tutorActions: { action: TutorAction; label: string }[] = [
+const tutorActions: { action: Exclude<TutorAction, 'message'>; label: string }[] = [
   { action: 'summarize', label: 'Summarize' },
   { action: 'explain', label: 'Explain' },
   { action: 'quiz-me', label: 'Quiz Me' },
@@ -43,6 +46,7 @@ export default function TutorPage() {
   const [input, setInput] = useState('');
   const [language, setLanguage] = useState<Language>('en');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const isPro = user?.subscriptionTier === 'pro';
   const tutorMutation = useMutation({
     mutationFn: fetchTutorResponse,
     onSuccess: (response) => {
@@ -82,6 +86,13 @@ export default function TutorPage() {
           <h1 className="text-4xl font-bold font-display text-foreground">AI Tutor</h1>
           <p className="mt-2 text-lg text-muted-foreground">Your personal assistant for any learning questions.</p>
         </div>
+        {!isPro && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-4">
+            <Badge variant="secondary" className="w-full text-center justify-center p-2">
+              Basic AI available. <Link to="/app/billing" className="ml-1 font-semibold text-primary hover:underline">Upgrade to Pro</Link> for full capabilities.
+            </Badge>
+          </motion.div>
+        )}
         <div className="flex-1 flex flex-col bg-card border rounded-lg shadow-soft overflow-hidden">
           <ScrollArea className="flex-1 p-6" ref={scrollAreaRef}>
             <div className="space-y-6">
@@ -119,14 +130,30 @@ export default function TutorPage() {
           <div className="p-4 border-t bg-background space-y-4">
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-2 flex-wrap">
-                {tutorActions.map(({ action, label }) => {
-                  const Icon = actionIcons[action];
-                  return (
-                    <Button key={action} variant="outline" size="sm" onClick={() => handleAction(action)} disabled={tutorMutation.isPending}>
-                      <Icon className="mr-2 h-4 w-4" /> {label}
-                    </Button>
-                  );
-                })}
+                <TooltipProvider>
+                  {tutorActions.map(({ action, label }) => {
+                    const Icon = actionIcons[action];
+                    const button = (
+                      <Button key={action} variant="outline" size="sm" onClick={() => handleAction(action)} disabled={!isPro || tutorMutation.isPending}>
+                        {!isPro && <Lock className="mr-2 h-4 w-4" />}
+                        {isPro && <Icon className="mr-2 h-4 w-4" />}
+                        {label}
+                      </Button>
+                    );
+                    return isPro ? (
+                      button
+                    ) : (
+                      <Tooltip key={action}>
+                        <TooltipTrigger asChild>
+                          <span>{button}</span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Upgrade to Pro for advanced features</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    );
+                  })}
+                </TooltipProvider>
               </div>
               <div className="ml-auto flex items-center gap-2">
                 <Languages className="h-4 w-4 text-muted-foreground" />

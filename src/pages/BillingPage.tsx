@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { CreditCard, Check, Star, Loader2, User, Building } from 'lucide-react';
@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 const fetchInstitution = async (): Promise<Institution> => api<Institution>('/api/institution');
 const fetchStudentSubscriptions = async (): Promise<StudentSubscription[]> => api<StudentSubscription[]>('/api/student/subscriptions');
@@ -88,10 +89,13 @@ export default function BillingPage() {
   });
   const cancelStudentSubMutation = useMutation({
     mutationFn: (subId: string) => api(`/api/student/subscriptions/${subId}/cancel`, { method: 'PUT' }),
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success('Subscription canceled.');
-      queryClient.invalidateQueries({ queryKey: ['student-subscriptions'] });
-      queryClient.invalidateQueries({ queryKey: ['user'] });
+      await queryClient.invalidateQueries({ queryKey: ['student-subscriptions'] });
+      if (user?.id) {
+        const updatedUser = await api<UserType>(`/api/users/${user.id}`);
+        authActions.setUser(updatedUser);
+      }
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to cancel subscription.'),
   });
@@ -103,7 +107,6 @@ export default function BillingPage() {
     onSuccess: async () => {
       toast.success('Subscription created. Refreshing status...');
       await queryClient.invalidateQueries({ queryKey: ['student-subscriptions'] });
-      await queryClient.invalidateQueries({ queryKey: ['user'] });
       if (user?.id) {
         const updatedUser = await api<UserType>(`/api/users/${user.id}`);
         authActions.setUser(updatedUser);
@@ -116,8 +119,9 @@ export default function BillingPage() {
     { name: 'Pro', price: 'Custom', priceSuffix: '', description: 'Unlock the full potential.', features: ['Unlimited students', 'Unlimited courses', 'Advanced analytics', 'Priority support'], plan: 'pro', highlight: true },
   ];
   const studentTiers = [
-    { name: 'Basic', price: '$2.99', priceSuffix: '/mo', description: 'Essential learning tools.', features: ['Unlimited quizzes', 'Basic AI Tutor help'], plan: 'basic' },
-    { name: 'Pro', price: '$4.99', priceSuffix: '/mo', description: 'Full access to all features.', features: ['Full AI Tutor capabilities', 'Access to all premium courses', 'Personal analytics'], plan: 'pro', highlight: true },
+    { name: 'Free', price: '$0', priceSuffix: '/mo', description: 'Basic access to the platform.', features: ['Access free courses', 'Take quizzes'], plan: 'free' },
+    { name: 'Basic', price: '$4.99', priceSuffix: '/mo', description: 'Essential learning tools.', features: ['Unlimited quizzes', 'Basic AI Tutor help'], plan: 'basic' },
+    { name: 'Pro', price: '$7.99', priceSuffix: '/mo', description: 'Full access to all features.', features: ['Full AI Tutor capabilities', 'Access all premium courses', 'Personal analytics'], plan: 'pro', highlight: true },
   ];
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
@@ -212,14 +216,14 @@ export default function BillingPage() {
                   <CardContent>
                     {isLoadingStudentSubs && <Skeleton className="h-32 w-full" />}
                     {studentSubsError && <p className="text-destructive">Could not load your subscriptions.</p>}
-                    {studentSubscriptions && (
-                      studentSubscriptions.some(s => s.status === 'active') ? (
+                    {user && studentSubscriptions && (
+                      user.subscriptionTier && user.subscriptionTier !== 'free' ? (
                         <Table>
                           <TableHeader><TableRow><TableHead>Plan</TableHead><TableHead>Status</TableHead><TableHead>Expires</TableHead><TableHead className="text-right">Action</TableHead></TableRow></TableHeader>
                           <TableBody>
                             {studentSubscriptions.map(sub => (
                               <TableRow key={sub.id}>
-                                <TableCell className="font-medium capitalize">{sub.plan}</TableCell>
+                                <TableCell className="font-medium capitalize">{sub.tier}</TableCell>
                                 <TableCell><Badge variant={sub.status === 'active' ? 'success' : 'secondary'} className="capitalize">{sub.status}</Badge></TableCell>
                                 <TableCell>{new Date(sub.expiry * 1000).toLocaleDateString()}</TableCell>
                                 <TableCell className="text-right">
@@ -239,10 +243,10 @@ export default function BillingPage() {
                         </Table>
                       ) : (
                         <div className="text-center py-8 space-y-8">
-                          <p className="text-muted-foreground">You have no active subscriptions. Upgrade to access premium courses.</p>
+                          <p className="text-muted-foreground">You are on the Free plan. Upgrade to access premium content.</p>
                           <RadioGroup defaultValue="basic" value={selectedTier} onValueChange={(v: 'basic' | 'pro') => setSelectedTier(v)} className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                            {studentTiers.map(tier => (
-                              <Label key={tier.name} htmlFor={tier.plan} className={cn("block cursor-pointer rounded-lg border bg-card text-card-foreground shadow-sm p-6 transition-all", selectedTier === tier.plan && "border-primary ring-2 ring-primary")}>
+                            {studentTiers.filter(t => t.plan !== 'free').map(tier => (
+                              <Label key={tier.name} htmlFor={tier.plan} className={cn("block cursor-pointer rounded-lg border bg-card text-card-foreground shadow-sm p-6 transition-all hover:scale-105", selectedTier === tier.plan && "border-primary ring-2 ring-primary")}>
                                 <div className="flex items-center justify-between">
                                   <h3 className="text-lg font-semibold">{tier.name}</h3>
                                   <RadioGroupItem value={tier.plan} id={tier.plan} />
