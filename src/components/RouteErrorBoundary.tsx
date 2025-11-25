@@ -6,38 +6,42 @@ export function RouteErrorBoundary() {
   const error = useRouteError();
   useEffect(() => {
     if (error) {
-      let errorMessage = 'Unknown route error';
-      let errorStack = '';
-      if (isRouteErrorResponse(error)) {
-        errorMessage = `Route Error ${error.status}: ${error.statusText}`;
-        if (error.data) {
+      try {
+        let errorMessage = 'Unknown route error';
+        let errorStack = '';
+        if (isRouteErrorResponse(error)) {
+          errorMessage = `Route Error ${error.status}: ${error.statusText}`;
+          if (error.data) {
+            try {
+              errorMessage += ` - ${JSON.stringify(error.data)}`;
+            } catch {
+              errorMessage += ' - (Unserializable data)';
+            }
+          }
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+          errorStack = error.stack || '';
+        } else if (typeof error === 'string') {
+          errorMessage = error;
+        } else {
           try {
-            errorMessage += ` - ${JSON.stringify(error.data)}`;
+            errorMessage = JSON.stringify(error);
           } catch {
-            errorMessage += ' - (Unserializable data)';
+            errorMessage = 'Unserializable route error';
           }
         }
-      } else if (error instanceof Error) {
-        errorMessage = error.message;
-        errorStack = error.stack || '';
-      } else if (typeof error === 'string') {
-        errorMessage = error;
-      } else {
-        try {
-          errorMessage = JSON.stringify(error);
-        } catch {
-          errorMessage = 'Unserializable route error';
-        }
+        errorReporter.report({
+          message: errorMessage,
+          stack: errorStack,
+          url: window.location.href,
+          timestamp: new Date().toISOString(),
+          source: 'react-router',
+          error: error,
+          level: "error",
+        });
+      } catch (reportingError) {
+        console.error("Error reporting the route error:", reportingError);
       }
-      errorReporter.report({
-        message: errorMessage,
-        stack: errorStack,
-        url: window.location.href,
-        timestamp: new Date().toISOString(),
-        source: 'react-router',
-        error: error,
-        level: "error",
-      });
     }
   }, [error]);
   if (isRouteErrorResponse(error)) {
