@@ -240,6 +240,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const decksWithoutCards = teacherDecks.map(({ cards, ...deck }) => deck);
     return ok(c, decksWithoutCards);
   });
+  app.get('/api/teacher/quizzes', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const teacherId = 'user-teacher-1'; // Mocked teacher ID
+    await QuizEntity.ensureSeed(c.env, tenantId);
+    await LessonEntity.ensureSeed(c.env, tenantId);
+    await CourseEntity.ensureSeed(c.env, tenantId);
+    const allCourses = (await CourseEntity.list(c.env, tenantId)).items;
+    const teacherCourseIds = new Set(allCourses.filter(c => c.teacherId === teacherId).map(c => c.id));
+    const allLessons = (await LessonEntity.list(c.env, tenantId)).items;
+    const teacherLessonIds = new Set(allLessons.filter(l => teacherCourseIds.has(l.courseId)).map(l => l.id));
+    const allQuizzes = (await QuizEntity.list(c.env, tenantId)).items;
+    const teacherQuizzes = allQuizzes.filter(q => teacherLessonIds.has(q.lessonId));
+    return ok(c, teacherQuizzes);
+  });
   // LESSONS
   app.post('/api/lessons', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);

@@ -12,6 +12,7 @@ import {
   Shield,
   FileText,
   MessageCircle,
+  CheckSquare,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -25,25 +26,6 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
-const navItems: { to: string; icon: React.ElementType; label: string; roles?: UserRole[]; external?: boolean }[] = [
-  { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/app/courses', icon: Book, label: 'Courses' },
-  { to: '/app/flashcards', icon: Presentation, label: 'Flashcards' },
-  { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
-  { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams', roles: ['admin', 'teacher', 'student'] },
-  { to: '/app/resources', icon: FileText, label: 'Resources', roles: ['admin', 'teacher', 'student'] },
-  { to: 'https://community.academicloud.com/discord', icon: MessageCircle, label: 'Community', external: true },
-  { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
-];
-const studentNavItems = [
-    { to: '/app/my-progress', icon: ClipboardCheck, label: 'My Progress' },
-];
-const teacherNavItems = [
-    { to: '/app/teacher/dashboard', icon: PenSquare, label: 'Teacher Tools' },
-];
-const superAdminNavItems = [
-    { to: '/app/super-admin', icon: Shield, label: 'Super Admin' },
-];
 const fetchInstitution = async (): Promise<Institution> => {
   return api<Institution>('/api/institution');
 };
@@ -55,6 +37,27 @@ export function AcademiCloudSidebar() {
     queryKey: ['institution'],
     queryFn: fetchInstitution,
   });
+  const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
+  const navItems: { to: string; icon: React.ElementType; label: string; roles?: UserRole[]; external?: boolean }[] = [
+    { to: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { to: '/app/courses', icon: Book, label: 'Courses' },
+    { to: isTeacherOrAdmin ? '/app/teacher/quizzes' : '/app/quizzes', icon: CheckSquare, label: 'Quizzes', roles: ['student', 'teacher', 'admin'] },
+    { to: '/app/flashcards', icon: Presentation, label: 'Flashcards' },
+    { to: '/app/tutor', icon: Sparkles, label: 'AI Tutor' },
+    { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams', roles: ['admin', 'teacher', 'student'] },
+    { to: '/app/resources', icon: FileText, label: 'Resources', roles: ['admin', 'teacher', 'student'] },
+    { to: 'https://community.academicloud.com/discord', icon: MessageCircle, label: 'Community', external: true },
+    { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
+  ];
+  const studentNavItems = [
+      { to: '/app/my-progress', icon: ClipboardCheck, label: 'My Progress' },
+  ];
+  const teacherNavItems = [
+      { to: '/app/teacher/dashboard', icon: PenSquare, label: 'Teacher Tools' },
+  ];
+  const superAdminNavItems = [
+      { to: '/app/super-admin', icon: Shield, label: 'Super Admin' },
+  ];
   const handleLogout = () => {
     logout();
     navigate('/');
@@ -62,7 +65,6 @@ export function AcademiCloudSidebar() {
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
-  const isTeacherOrAdmin = user?.role === 'teacher' || user?.role === 'admin';
   const isStudent = user?.role === 'student';
   const isSuperAdmin = user?.role === 'super-admin';
   const visibleNavItems = navItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));

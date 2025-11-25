@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle, XCircle, ArrowLeft, ArrowRight, Award } from 'lucide-react';
 import { toast } from 'sonner';
+import Confetti from 'react-dom-confetti';
 import { api } from '@/lib/api-client';
 import type { Quiz } from '@shared/types';
 import { useAuthStore } from '@/store/auth';
@@ -12,13 +13,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
-const Confetti = (props: any) => null;
 const fetchQuiz = async (quizId: string): Promise<Quiz> => {
   return api<Quiz>(`/api/quizzes/${quizId}`);
 };
 export default function QuizTakerPage() {
   const { quizId } = useParams<{ quizId: string }>();
   const user = useAuthStore(s => s.user);
+  const queryClient = useQueryClient();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<number, number>>({});
   const [isFinished, setIsFinished] = useState(false);
@@ -33,19 +34,26 @@ export default function QuizTakerPage() {
       body: JSON.stringify(submission),
     }),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['submissions', user?.id] });
       toast.success('Quiz results saved!');
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Failed to save quiz results.');
     },
   });
-  const score = quiz ? Object.entries(selectedAnswers).reduce((acc, [qIndex, aIndex]) => {
-    if (quiz.questions[Number(qIndex)].correctAnswer === aIndex) {
-      return acc + 1;
-    }
-    return acc;
-  }, 0) : 0;
-  const percentage = quiz ? Math.round((score / quiz.questions.length) * 100) : 0;
+  const score = useMemo(() => {
+    if (!quiz) return 0;
+    return Object.entries(selectedAnswers).reduce((acc, [qIndex, aIndex]) => {
+      if (quiz.questions[Number(qIndex)].correctAnswer === aIndex) {
+        return acc + 1;
+      }
+      return acc;
+    }, 0);
+  }, [selectedAnswers, quiz]);
+  const percentage = useMemo(() => {
+    if (!quiz || quiz.questions.length === 0) return 0;
+    return Math.round((score / quiz.questions.length) * 100);
+  }, [score, quiz]);
   useEffect(() => {
     if (isFinished && quizId && user) {
       submitQuizMutation.mutate({ quizId, studentId: user.id, score: percentage });
@@ -68,8 +76,8 @@ export default function QuizTakerPage() {
   };
   if (isFinished) {
     return (
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center">
-        <Confetti active={percentage >= 80} config={{ spread: 90, elementCount: 200 }} />
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12 text-center flex flex-col items-center">
+        <Confetti active={percentage >= 80} config={{ angle: 90, spread: 360, startVelocity: 40, elementCount: 70, dragFriction: 0.12, duration: 3000, stagger: 3, width: "10px", height: "10px", perspective: "500px" }} />
         <Award className="h-24 w-24 text-amber-400 mx-auto mb-4" />
         <h1 className="text-4xl font-bold font-display">Quiz Complete!</h1>
         <p className="text-xl text-muted-foreground mt-2">You scored</p>

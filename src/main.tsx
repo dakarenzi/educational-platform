@@ -37,6 +37,7 @@ import TeacherCoursesPage from '@/pages/teacher/TeacherCoursesPage';
 import TeacherFlashcardsPage from '@/pages/teacher/TeacherFlashcardsPage';
 import TeacherMockExamsPage from '@/pages/teacher/TeacherMockExamsPage';
 import TeacherResourcesPage from '@/pages/teacher/TeacherResourcesPage';
+import TeacherQuizzesPage from '@/pages/teacher/TeacherQuizzesPage';
 const queryClient = new QueryClient();
 const router = createBrowserRouter([
   {
@@ -60,6 +61,7 @@ const router = createBrowserRouter([
         { path: "courses/:courseId", element: <CourseDetailPage /> },
         { path: "lesson/:lessonId/quiz", element: <QuizCreatorPage /> },
         { path: "quiz/:quizId", element: <QuizTakerPage /> },
+        { path: "quizzes", element: <CoursesPage /> }, // Students see courses to find quizzes
         { path: "flashcards", element: <FlashcardsPage /> },
         { path: "flashcards/:deckId", element: <FlashcardDeckPage /> },
         { path: "tutor", element: <TutorPage /> },
@@ -76,6 +78,7 @@ const router = createBrowserRouter([
             { index: true, element: <Navigate to="/app/teacher/dashboard" replace /> },
             { path: "dashboard", element: <TeacherDashboardPage /> },
             { path: "courses", element: <TeacherCoursesPage /> },
+            { path: "quizzes", element: <TeacherQuizzesPage /> },
             { path: "flashcards", element: <TeacherFlashcardsPage /> },
             { path: "mock-exams", element: <TeacherMockExamsPage /> },
             { path: "resources", element: <TeacherResourcesPage /> },

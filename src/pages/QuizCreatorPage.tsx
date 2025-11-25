@@ -5,6 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, PlusCircle, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { v4 as uuidv4 } from 'uuid';
 import { api } from '@/lib/api-client';
 import type { Quiz } from '@shared/types';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ const questionSchema = z.object({
   id: z.string(),
   text: z.string().min(5, 'Question text must be at least 5 characters.'),
   options: z.array(z.string().min(1, 'Option cannot be empty.')).length(4, 'There must be exactly 4 options.'),
-  correctAnswer: z.number().int().min(0).max(3),
+  correctAnswer: z.number({ required_error: "Please select a correct answer." }).int().min(0).max(3),
 });
 const quizFormSchema = z.object({
   title: z.string().min(3, 'Quiz title must be at least 3 characters.'),
@@ -31,7 +32,7 @@ export default function QuizCreatorPage() {
     resolver: zodResolver(quizFormSchema),
     defaultValues: {
       title: '',
-      questions: [{ id: crypto.randomUUID(), text: '', options: ['', '', '', ''], correctAnswer: 0 }],
+      questions: [{ id: uuidv4(), text: '', options: ['', '', '', ''], correctAnswer: 0 }],
     },
   });
   const { fields, append, remove } = useFieldArray({
@@ -54,7 +55,7 @@ export default function QuizCreatorPage() {
   });
   const onSubmit = (values: QuizFormValues) => {
     if (!lessonId) return;
-    createQuizMutation.mutate({ ...values, lessonId });
+    createQuizMutation.mutate({ ...values, lessonId, tenantId: 'inst-1' });
   };
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -117,17 +118,20 @@ export default function QuizCreatorPage() {
                           <RadioGroup
                             onValueChange={(value) => field.onChange(parseInt(value, 10))}
                             defaultValue={String(field.value)}
-                            className="flex flex-col space-y-1"
+                            className="space-y-2"
                           >
                             {[0, 1, 2, 3].map((optionIndex) => (
-                              <div key={optionIndex} className="flex items-center gap-2">
-                                <RadioGroupItem value={String(optionIndex)} id={`q${index}-o${optionIndex}`} />
+                              <div key={optionIndex} className="flex items-center gap-3">
+                                <FormControl>
+                                  <RadioGroupItem value={String(optionIndex)} id={`q${index}-o${optionIndex}`} />
+                                </FormControl>
                                 <FormField
                                   control={form.control}
                                   name={`questions.${index}.options.${optionIndex}`}
                                   render={({ field: optionField }) => (
                                     <FormItem className="flex-1">
                                       <FormControl><Input placeholder={`Option ${optionIndex + 1}`} {...optionField} /></FormControl>
+                                      <FormMessage />
                                     </FormItem>
                                   )}
                                 />
@@ -143,7 +147,7 @@ export default function QuizCreatorPage() {
               </Card>
             ))}
             <div className="flex justify-between items-center">
-              <Button type="button" variant="outline" onClick={() => append({ id: crypto.randomUUID(), text: '', options: ['', '', '', ''], correctAnswer: 0 })}>
+              <Button type="button" variant="outline" onClick={() => append({ id: uuidv4(), text: '', options: ['', '', '', ''], correctAnswer: 0 })}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Question
               </Button>
               <Button type="submit" size="lg" disabled={createQuizMutation.isPending}>

@@ -142,15 +142,15 @@ export default function CourseDetailPage() {
                                     </Button>
                                 ) : (
                                     <Button asChild size="sm">
-                                        <Link to={`/app/quiz/${lesson.quiz.id}`}><ClipboardCheck className="mr-2 h-4 w-4" />Take Quiz</Link>
+                                        <Link to={`/app/quiz/${lesson.quiz.id}`}><ClipboardCheck className="mr-2 h-4 w-4" />Take Quiz ({lesson.quiz.questions.length} questions)</Link>
                                     </Button>
                                 )
                             ) : isTeacherOrAdmin ? (
                                 <Button asChild size="sm" variant="outline">
-                                    <Link to={`/app/lesson/${lesson.id}/quiz`}><PlusCircle className="mr-2 h-4 w-4" />Add Quiz</Link>
+                                    <Link to={`/app/lesson/${lesson.id}/quiz`}><PlusCircle className="mr-2 h-4 w-4" />Create Quiz</Link>
                                 </Button>
                             ) : (
-                                <p className="text-xs text-muted-foreground">No quiz available.</p>
+                                <p className="text-xs text-muted-foreground">No quiz available yet.</p>
                             )}
                           </div>
                         </AccordionContent>

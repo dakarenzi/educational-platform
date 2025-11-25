@@ -38,7 +38,7 @@ export default function AnalyticsPage() {
   const kpiData = data ? [
     { title: 'Total Students', value: data.kpi.totalStudents.toLocaleString(), icon: Users, change: '+12%', changeType: 'increase' },
     { title: 'Active Courses', value: data.kpi.activeCourses.toLocaleString(), icon: BookOpen, change: '+5', changeType: 'increase' },
-    { title: 'Avg. Score', value: `${data.kpi.avgScore}%`, icon: Target, change: '-2%', changeType: 'decrease' },
+    { title: 'Avg. Quiz Score', value: `${data.kpi.avgScore}%`, icon: Target, change: '-2%', changeType: 'decrease' },
     { title: 'Completion Rate', value: `${data.kpi.completionRate}%`, icon: Activity, change: '+3%', changeType: 'increase' },
   ] : [];
   const containerVariants = {

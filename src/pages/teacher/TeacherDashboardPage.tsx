@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { PlusCircle, Book, Presentation, ClipboardList, FileText } from 'lucide-react';
+import { PlusCircle, Book, Presentation, ClipboardList, FileText, CheckSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/store/auth';
@@ -10,6 +10,12 @@ const teacherActions = [
     description: 'Edit existing courses and add new lessons or quizzes.',
     href: '/app/teacher/courses',
     icon: Book,
+  },
+  {
+    title: 'Manage Quizzes',
+    description: 'View all quizzes you have created for your lessons.',
+    href: '/app/teacher/quizzes',
+    icon: CheckSquare,
   },
   {
     title: 'Manage Flashcard Decks',
