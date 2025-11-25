@@ -14,6 +14,8 @@ import {
   MessageCircle,
   CheckSquare,
   CreditCard,
+  Settings,
+  Users,
 } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -47,6 +49,7 @@ export function AcademiCloudSidebar() {
     { to: '/app/mock-exams', icon: ClipboardList, label: 'Mock Exams', roles: ['admin', 'teacher', 'student'] },
     { to: '/app/resources', icon: FileText, label: 'Resources', roles: ['admin', 'teacher', 'student'] },
     { to: '/app/billing', icon: CreditCard, label: 'Subscriptions' },
+    { to: '/app/settings', icon: Settings, label: 'Settings', roles: ['student', 'parent'] },
     { to: 'https://community.academicloud.com/discord', icon: MessageCircle, label: 'Community', external: true },
     { to: '/app/analytics', icon: BrainCircuit, label: 'Analytics', roles: ['admin', 'teacher'] },
   ];
@@ -55,6 +58,9 @@ export function AcademiCloudSidebar() {
   ];
   const teacherNavItems = [
       { to: '/app/teacher/dashboard', icon: PenSquare, label: 'Teacher Tools' },
+  ];
+  const parentNavItems = [
+      { to: '/app/parent', icon: Users, label: 'Parent Dashboard' },
   ];
   const superAdminNavItems = [
       { to: '/app/super-admin', icon: Shield, label: 'Super Admin' },
@@ -67,6 +73,7 @@ export function AcademiCloudSidebar() {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
   const isStudent = user?.role === 'student';
+  const isParent = user?.role === 'parent';
   const isSuperAdmin = user?.role === 'super-admin';
   const visibleNavItems = navItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
   const NavItem = ({ to, icon: Icon, label, external }: { to: string; icon: React.ElementType; label: string; external?: boolean }) => {
@@ -134,6 +141,12 @@ export function AcademiCloudSidebar() {
             <>
               <Separator className="my-2 bg-sidebar-border" />
               {teacherNavItems.map((item) => <NavItem key={item.label} {...item} />)}
+            </>
+          )}
+          {isParent && (
+            <>
+              <Separator className="my-2 bg-sidebar-border" />
+              {parentNavItems.map((item) => <NavItem key={item.label} {...item} />)}
             </>
           )}
           {isSuperAdmin && (

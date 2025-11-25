@@ -17,7 +17,7 @@ export interface Institution {
   status?: 'active' | 'canceled' | 'trialing';
   nextBilling?: number; // Unix timestamp
 }
-export type UserRole = 'admin' | 'teacher' | 'student' | 'super-admin';
+export type UserRole = 'admin' | 'teacher' | 'student' | 'super-admin' | 'parent';
 export interface User {
   id: string;
   tenantId: string;
@@ -31,6 +31,7 @@ export interface User {
   subscriptionTier?: 'free' | 'basic' | 'pro';
   paymentId?: string;
   expiry?: number; // Unix timestamp
+  monitoringEnabled?: boolean;
 }
 export interface SuperAdminUser extends User {
   role: 'super-admin';
@@ -162,6 +163,15 @@ export interface PendingQuote {
   submittedAt: string;
   adminEmail?: string;
   notes?: string; // For rejection reasons
+}
+export interface ParentLink {
+  id: string;
+  tenantId: string;
+  parentId: string;
+  childId: string;
+  code: string;
+  approved: boolean;
+  createdAt: string;
 }
 // Auth Types
 export interface LoginResponse {

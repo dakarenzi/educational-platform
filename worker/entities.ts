@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant, MockExam, MockExamSubmission, Resource, StudentSubscription, PendingQuote } from "@shared/types";
+import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant, MockExam, MockExamSubmission, Resource, StudentSubscription, PendingQuote, ParentLink } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
   { id: 'inst-1', name: 'Cloudflare University', country: 'USA', curriculum: 'US', languages: ['en'], adminEmail: 'contact@cfu.edu', plan: 'trial', status: 'trialing' },
   { id: 'inst-2', name: 'Workers Academy', country: 'France', curriculum: 'AEFE', languages: ['fr', 'en'], adminEmail: 'contact@workers.ac', plan: 'trial', status: 'trialing' },
@@ -7,8 +7,9 @@ const MOCK_INSTITUTIONS: Institution[] = [
 const MOCK_USERS: User[] = [
   { id: 'user-admin-1', tenantId: 'inst-1', name: 'Dr. Evelyn Reed', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin1' },
   { id: 'user-teacher-1', tenantId: 'inst-1', name: 'Prof. Alan Grant', role: 'teacher', avatarUrl: 'https://i.pravatar.cc/150?u=teacher1' },
-  { id: 'user-student-1', tenantId: 'inst-1', name: 'Sam Neill', role: 'student', avatarUrl: 'https://i.pravatar.cc/150?u=student1', subscriptionStatus: 'free', subscriptionTier: 'free' },
-  { id: 'user-student-2', tenantId: 'inst-1', name: 'Laura Dern', role: 'student', avatarUrl: 'https://i.pravatar.cc/150?u=student2', subscriptionStatus: 'free', subscriptionTier: 'free' },
+  { id: 'user-student-1', tenantId: 'inst-1', name: 'Sam Neill', role: 'student', avatarUrl: 'https://i.pravatar.cc/150?u=student1', subscriptionStatus: 'free', subscriptionTier: 'free', monitoringEnabled: false },
+  { id: 'user-student-2', tenantId: 'inst-1', name: 'Laura Dern', role: 'student', avatarUrl: 'https://i.pravatar.cc/150?u=student2', subscriptionStatus: 'free', subscriptionTier: 'free', monitoringEnabled: false },
+  { id: 'user-parent-1', tenantId: 'inst-1', name: 'John Hammond', role: 'parent', avatarUrl: 'https://i.pravatar.cc/150?u=parent1' },
 ];
 const MOCK_COURSES: Course[] = [
     { id: 'course-1', tenantId: 'inst-1', title: 'Introduction to Paleontology', description: 'Discover the world of dinosaurs and ancient life.', teacherId: 'user-teacher-1', imageUrl: 'https://images.unsplash.com/photo-1582573543323-626b11696f43?q=80&w=800' },
@@ -74,7 +75,7 @@ export class InstitutionEntity extends IndexedEntity<Institution> {
 export class UserEntity extends IndexedEntity<User> {
   static readonly entityName = "user";
   static readonly indexName = "users";
-  static readonly initialState: User = { id: "", tenantId: "", name: "", role: 'student', subscriptionStatus: 'free', subscriptionTier: 'free' };
+  static readonly initialState: User = { id: "", tenantId: "", name: "", role: 'student', subscriptionStatus: 'free', subscriptionTier: 'free', monitoringEnabled: false };
   static seedData = MOCK_USERS;
 }
 // COURSE ENTITY
@@ -190,4 +191,19 @@ export class PendingQuoteEntity extends IndexedEntity<PendingQuote> {
     submittedAt: ""
   };
   static seedData: PendingQuote[] = [];
+}
+// PARENT LINK ENTITY
+export class ParentLinkEntity extends IndexedEntity<ParentLink> {
+  static readonly entityName = "parentLink";
+  static readonly indexName = "parentLinks";
+  static readonly initialState: ParentLink = {
+    id: "",
+    tenantId: "",
+    parentId: "",
+    childId: "",
+    code: "",
+    approved: false,
+    createdAt: ""
+  };
+  static seedData: ParentLink[] = [];
 }

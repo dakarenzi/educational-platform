@@ -1,8 +1,8 @@
 import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
-import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity, StudentSubscriptionEntity, PendingQuoteEntity } from "./entities";
+import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity, StudentSubscriptionEntity, PendingQuoteEntity, ParentLinkEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload, StudentSubscription, PendingQuote } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload, StudentSubscription, PendingQuote, ParentLink } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -428,6 +428,68 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await userEntity.patch({ subscriptionStatus: 'free', subscriptionTier: 'free', paymentId: '', expiry: 0 });
     return ok(c, { success: true });
   });
+  // PARENT MONITORING
+  app.post('/api/parent/invite', async (c) => {
+    const parentId = (c as any).get('userId');
+    const tenantId = (c as any).get('tenantId');
+    const { childId } = await c.req.json<{ childId: string }>();
+    if ((c as any).get('userRole') !== 'parent') return c.json({ error: 'Forbidden' }, 403);
+    if (!isStr(childId)) return bad(c, 'childId is required.');
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const newLink: ParentLink = {
+      id: crypto.randomUUID(),
+      tenantId,
+      parentId,
+      childId,
+      code,
+      approved: false,
+      createdAt: new Date().toISOString(),
+    };
+    await ParentLinkEntity.create(c.env, tenantId, newLink);
+    console.log(`[EMAIL SIM] Sending invite to child ${childId} from parent ${parentId} with code: ${code}`);
+    return ok(c, { code });
+  });
+  app.post('/api/parent/approve', async (c) => {
+    const childId = (c as any).get('userId');
+    const tenantId = (c as any).get('tenantId');
+    const { code } = await c.req.json<{ code: string }>();
+    if ((c as any).get('userRole') !== 'student') return c.json({ error: 'Forbidden' }, 403);
+    if (!isStr(code)) return bad(c, 'Approval code is required.');
+    const allLinks = (await ParentLinkEntity.list(c.env, tenantId)).items;
+    const link = allLinks.find(l => l.code === code.toUpperCase() && l.childId === childId && !l.approved);
+    if (!link) return bad(c, 'Invalid or expired approval code.');
+    const linkEntity = new ParentLinkEntity(c.env, link.id);
+    await linkEntity.patch({ approved: true });
+    const userEntity = new UserEntity(c.env, childId);
+    await userEntity.patch({ monitoringEnabled: true });
+    return ok(c, { success: true });
+  });
+  app.get('/api/parent/progress', async (c) => {
+    const parentId = (c as any).get('userId');
+    const tenantId = (c as any).get('tenantId');
+    if ((c as any).get('userRole') !== 'parent') return c.json({ error: 'Forbidden' }, 403);
+    const allLinks = (await ParentLinkEntity.list(c.env, tenantId)).items;
+    const approvedLinks = allLinks.filter(l => l.parentId === parentId && l.approved);
+    const childIds = approvedLinks.map(l => l.childId);
+    const allUsers = (await UserEntity.list(c.env, tenantId)).items;
+    const children = allUsers.filter(u => childIds.includes(u.id));
+    const allQuizSubmissions = (await QuizSubmissionEntity.list(c.env, tenantId)).items;
+    const allMockExamSubmissions = (await MockExamSubmissionEntity.list(c.env, tenantId)).items;
+    const progressData = children.map(child => {
+      const quizSubmissions = allQuizSubmissions.filter(s => s.studentId === child.id);
+      const mockExamSubmissions = allMockExamSubmissions.filter(s => s.studentId === child.id);
+      const allScores = [...quizSubmissions.map(s => s.score), ...mockExamSubmissions.map(s => s.score)];
+      const avgScore = allScores.length > 0 ? Math.round(allScores.reduce((a, b) => a + b, 0) / allScores.length) : 0;
+      return {
+        childId: child.id,
+        childName: child.name,
+        avgScore,
+        quizSubmissions,
+        mockExamSubmissions,
+      };
+    });
+    return ok(c, progressData);
+  });
   // INSTITUTION
   app.get('/api/institution', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);
@@ -460,6 +522,29 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const user = await userEntity.getState();
     if (user.tenantId !== tenantId && (c as any).get('userRole') !== 'super-admin') return notFound(c, 'User not found in this institution');
     const { passwordHash: _, ...userResponse } = user;
+    return ok(c, userResponse);
+  });
+  app.patch('/api/users/:id', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const id = c.req.param('id');
+    const updates = await c.req.json<Partial<User>>();
+    // Security check: ensure user can only update themselves, or if admin/super-admin
+    const currentUserId = (c as any).get('userId');
+    const currentUserRole = (c as any).get('userRole');
+    if (id !== currentUserId && !['admin', 'super-admin'].includes(currentUserRole)) {
+        return c.json({ error: 'Forbidden' }, 403);
+    }
+    const userEntity = new UserEntity(c.env, id);
+    if (!(await userEntity.exists())) return notFound(c, 'User not found');
+    const user = await userEntity.getState();
+    if (user.tenantId !== tenantId && currentUserRole !== 'super-admin') return notFound(c, 'User not found in this institution');
+    // Prevent role escalation
+    if (updates.role && !['admin', 'super-admin'].includes(currentUserRole)) {
+        delete updates.role;
+    }
+    await userEntity.patch(updates);
+    const updatedUser = await userEntity.getState();
+    const { passwordHash: _, ...userResponse } = updatedUser;
     return ok(c, userResponse);
   });
   // COURSES (CMS-like routes)

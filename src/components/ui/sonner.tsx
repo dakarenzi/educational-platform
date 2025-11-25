@@ -1,12 +1,44 @@
 "use client"
 
-import { useTheme } from "next-themes"
+
 import { Toaster as Sonner, toast } from "sonner"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme()
+  let theme: ToasterProps["theme"] | string = "system"
+
+  // Safe client-side theme detection without using next-themes/useTheme hook.
+  // Checks localStorage 'theme' first, then document.documentElement.classList for 'dark'/'light'.
+  // Falls back to 'system' when unavailable (SSR/no access).
+  try {
+    if (typeof window === "undefined") {
+      theme = "system"
+    } else {
+      let detected: string | null = null
+      try {
+        detected = localStorage.getItem("theme")
+      } catch (e) {
+        detected = null
+      }
+
+      if (detected === "light" || detected === "dark" || detected === "system") {
+        theme = detected as ToasterProps["theme"]
+      } else {
+        const htmlClass = document?.documentElement?.classList
+        if (htmlClass?.contains && htmlClass.contains("dark")) {
+          theme = "dark"
+        } else if (htmlClass?.contains && htmlClass.contains("light")) {
+          theme = "light"
+        } else {
+          theme = "system"
+        }
+      }
+    }
+  } catch (err) {
+    // If detection fails (e.g., strict CSP), fall back to 'system'
+    theme = "system"
+  }
 
   return (
     <Sonner

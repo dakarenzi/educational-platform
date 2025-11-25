@@ -88,14 +88,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 }));
-export const authActions = useAuthStore.getState().actions;
+export const getAuthActions = () => useAuthStore.getState().actions;
+export const authActions = {
+  login: (user: User, token: string) =>
+    useAuthStore.getState().actions.login(user, token),
+  logout: () => useAuthStore.getState().actions.logout(),
+  initialize: () => useAuthStore.getState().actions.initialize(),
+  setUser: (user: User) => useAuthStore.getState().actions.setUser(user),
+};
 export function AuthInitializer() {
   const initialize = useAuthStore(s => s.actions.initialize);
   const isInitialized = useAuthStore(s => s.isInitialized);
   useEffect(() => {
-    if (!isInitialized) {
-      initialize();
-    }
+    let mounted = true;
+    const runInitialize = async () => {
+      try {
+        if (!isInitialized && mounted) {
+          await initialize();
+        }
+      } catch (error) {
+        console.error("AuthInitializer initialize failed:", error);
+      }
+    };
+    runInitialize();
+    return () => {
+      mounted = false;
+    };
   }, [initialize, isInitialized]);
   return null;
 }
