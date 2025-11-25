@@ -78,7 +78,8 @@ function updateWranglerJsonc() {
 
 function runSetupCommands() {
     const commands = [
-    "bun install react-dom-confetti"
+    "bun install react-dom-confetti",
+    "bun install uuid"
 ];
     
     if (commands.length === 0) {
