@@ -8,6 +8,9 @@ interface LanguageToggleProps {
 }
 export function LanguageToggle({ className }: LanguageToggleProps) {
   const { i18n } = useTranslation();
+  if (!i18n.isInitialized) {
+    return null; // or a loading skeleton
+  }
   const changeLanguage = (lng: string) => {
     i18n.changeLanguage(lng);
   };

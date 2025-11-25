@@ -1,8 +1,8 @@
 import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
-import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity } from "./entities";
+import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity, StudentSubscriptionEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload, StudentSubscription } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -85,6 +85,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       email,
       role,
       passwordHash,
+      subscriptionStatus: 'free',
     };
     await UserEntity.create(c.env, tenantId, newUser);
     const { passwordHash: _, ...userResponse } = newUser;
@@ -146,6 +147,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       console.error(`[STRIPE MOCK] Webhook error: ${(err as Error).message}`);
       return bad(c, `Webhook Error: ${(err as Error).message}`);
     }
+  });
+  app.post('/api/webhooks/stripe/student', async (c) => {
+    const event = await c.req.json<any>();
+    console.log(`[STRIPE STUDENT MOCK] Event: ${event.type}`);
+    if (event.type === 'payment_intent.succeeded') {
+      const { metadata: { userId, tenantId } } = event.data.object;
+      if (userId && tenantId) {
+        const subEntity = new StudentSubscriptionEntity(c.env, `sub_${event.data.object.id}`);
+        await subEntity.patch({ status: 'active', expiry: Math.floor(Date.now() / 1000) + 2592000 });
+        const userEntity = new UserEntity(c.env, userId);
+        await userEntity.patch({ subscriptionStatus: 'premium' });
+      }
+    }
+    return c.text('OK', 200);
   });
   // Middleware to simulate a tenant and user role context
   const tenantMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) => {
@@ -318,6 +333,35 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     console.log(`[STRIPE MOCK] Created subscription ${mockSubId} for tenant ${tenantId}`);
     // Simulate redirect to a success page instead of a real checkout URL
     return ok(c, { checkoutUrl: '/app/billing?success=true' });
+  });
+  // STUDENT SUBSCRIPTIONS
+  app.get('/api/student/subscriptions', async (c) => {
+    const userId = (c as any).get('userId');
+    const tenantId = (c as any).get('tenantId');
+    if (!userId) return bad(c, 'Unauthorized');
+    const subs = await StudentSubscriptionEntity.list(c.env, tenantId);
+    return ok(c, subs.items.filter(s => s.userId === userId));
+  });
+  app.post('/api/student/subscriptions', async (c) => {
+    const { plan = 'premium' } = await c.req.json();
+    const userId = (c as any).get('userId');
+    const tenantId = (c as any).get('tenantId');
+    if (!userId) return bad(c, 'Unauthorized');
+    const userEntity = new UserEntity(c.env, userId);
+    await userEntity.patch({ subscriptionStatus: 'premium', paymentId: `pay_${crypto.randomUUID()}`, expiry: Math.floor(Date.now() / 1000) + 2592000 });
+    const sub: StudentSubscription = { id: crypto.randomUUID(), userId, tenantId, plan, status: 'active', expiry: Math.floor(Date.now() / 1000) + 2592000, paymentId: `pay_${crypto.randomUUID()}` };
+    await StudentSubscriptionEntity.create(c.env, tenantId, sub);
+    return ok(c, { sessionUrl: '/app/billing?success=true' });
+  });
+  app.put('/api/student/subscriptions/:id/cancel', async (c) => {
+    const id = c.req.param('id');
+    const userId = (c as any).get('userId');
+    const subEntity = new StudentSubscriptionEntity(c.env, id);
+    if (!(await subEntity.exists()) || (await subEntity.getState()).userId !== userId) return bad(c, 'Not found');
+    await subEntity.patch({ status: 'canceled' });
+    const userEntity = new UserEntity(c.env, userId);
+    await userEntity.patch({ subscriptionStatus: 'free', paymentId: '', expiry: 0 });
+    return ok(c, { success: true });
   });
   // INSTITUTION
   app.get('/api/institution', async (c) => {

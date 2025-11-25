@@ -11,6 +11,7 @@ interface AuthState {
     login: (user: User, token: string) => void;
     logout: () => void;
     initialize: () => Promise<void>;
+    setUser: (user: User) => void;
   };
 }
 const STORAGE_KEY = 'auth-token';
@@ -82,11 +83,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isInitialized: true });
       }
     },
+    setUser: (user) => {
+        set({ user });
+    }
   },
 }));
-// Expose actions for non-hook usage
 export const authActions = useAuthStore.getState().actions;
-// Create a component to handle initialization within the React lifecycle
 export function AuthInitializer() {
   const initialize = useAuthStore(s => s.actions.initialize);
   const isInitialized = useAuthStore(s => s.isInitialized);
@@ -95,5 +97,5 @@ export function AuthInitializer() {
       initialize();
     }
   }, [initialize, isInitialized]);
-  return null; // This component renders nothing
+  return null;
 }

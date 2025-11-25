@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { errorReporter } from '@/lib/errorReporter';
 import { ErrorFallback } from './ErrorFallback';
 export function RouteErrorBoundary() {
-  // Call useRouteError unconditionally at the top level of the component.
   const error = useRouteError();
   useEffect(() => {
     try {
@@ -60,7 +59,6 @@ export function RouteErrorBoundary() {
       />
     );
   }
-  // Fallback for non-RouteErrorResponse errors
   return (
     <ErrorFallback
       title="Unexpected Error"

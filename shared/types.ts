@@ -26,6 +26,10 @@ export interface User {
   role: UserRole;
   avatarUrl?: string;
   passwordHash?: string;
+  // Student Subscription Fields
+  subscriptionStatus?: 'free' | 'premium';
+  paymentId?: string;
+  expiry?: number; // Unix timestamp
 }
 export interface SuperAdminUser extends User {
   role: 'super-admin';
@@ -38,6 +42,7 @@ export interface Course {
   teacherId: string;
   imageUrl?: string;
   lessons?: Lesson[];
+  isPremium?: boolean;
 }
 export interface Lesson {
   id: string;
@@ -135,6 +140,15 @@ export interface Resource {
   creatorId: string;
   downloads: number;
   createdAt: string;
+}
+export interface StudentSubscription {
+  id: string;
+  userId: string;
+  tenantId: string;
+  plan: 'premium';
+  status: 'active' | 'canceled';
+  expiry: number; // Unix timestamp
+  paymentId: string;
 }
 // Auth Types
 export interface LoginResponse {

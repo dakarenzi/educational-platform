@@ -1,4 +1,4 @@
-import { Book, BrainCircuit, ClipboardList, LayoutDashboard, Presentation, Sparkles, FileText, MessageCircle, CheckSquare } from 'lucide-react';
+import { Book, BrainCircuit, ClipboardList, LayoutDashboard, Presentation, Sparkles, FileText, MessageCircle, CheckSquare, CreditCard } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,14 @@ export default function DashboardPage() {
     { title: t('community'), href: 'https://community.academicloud.com/discord', icon: MessageCircle, description: t('communityDescription'), external: true, roles: ['student', 'teacher', 'admin'] },
     { title: t('analytics'), href: '/app/analytics', icon: BrainCircuit, description: t('analyticsDescription'), roles: ['admin', 'teacher'] },
   ];
+  if (user?.role === 'student') {
+    dashboardItems.push({
+      title: 'Subscriptions',
+      href: '/app/billing',
+      icon: CreditCard,
+      description: `Manage your ${user.subscriptionStatus === 'premium' ? 'Premium' : 'Free'} access`,
+    } as any);
+  }
   const visibleItems = dashboardItems.filter(item => !item.roles || (user && item.roles.includes(user.role)));
   const containerVariants = {
     hidden: { opacity: 0 },
