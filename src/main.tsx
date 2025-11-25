@@ -30,6 +30,7 @@ import MockExamsPage from '@/pages/MockExamsPage';
 import MockExamTakerPage from '@/pages/student/MockExamTakerPage';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 import ResourcesPage from '@/pages/ResourcesPage';
+import QuizzesPage from '@/pages/QuizzesPage';
 // Teacher Tools
 import { TeacherLayout } from '@/components/layout/TeacherLayout';
 import TeacherDashboardPage from '@/pages/teacher/TeacherDashboardPage';
@@ -61,7 +62,7 @@ const router = createBrowserRouter([
         { path: "courses/:courseId", element: <CourseDetailPage /> },
         { path: "lesson/:lessonId/quiz", element: <QuizCreatorPage /> },
         { path: "quiz/:quizId", element: <QuizTakerPage /> },
-        { path: "quizzes", element: <CoursesPage /> }, // Students see courses to find quizzes
+        { path: "quizzes", element: <QuizzesPage /> },
         { path: "flashcards", element: <FlashcardsPage /> },
         { path: "flashcards/:deckId", element: <FlashcardDeckPage /> },
         { path: "tutor", element: <TutorPage /> },

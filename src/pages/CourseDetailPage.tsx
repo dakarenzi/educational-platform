@@ -14,6 +14,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { LessonForm } from '@/components/forms/LessonForm';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 const fetchCourse = async (courseId: string): Promise<Course> => {
   return api<Course>(`/api/courses/${courseId}`);
 };
@@ -133,18 +134,21 @@ export default function CourseDetailPage() {
                         <AccordionContent className="prose prose-sm dark:prose-invert max-w-none pl-12 space-y-4">
                           <p>{lesson.content}</p>
                           <Separator />
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
                             <h4 className="font-semibold text-foreground">Quiz</h4>
                             {lesson.quiz ? (
-                                isTeacherOrAdmin ? (
-                                    <Button asChild size="sm" variant="secondary">
-                                        <Link to={`/app/lesson/${lesson.id}/quiz`}><FilePenLine className="mr-2 h-4 w-4" />Edit Quiz</Link>
-                                    </Button>
-                                ) : (
-                                    <Button asChild size="sm">
-                                        <Link to={`/app/quiz/${lesson.quiz.id}`}><ClipboardCheck className="mr-2 h-4 w-4" />Take Quiz ({lesson.quiz.questions.length} questions)</Link>
-                                    </Button>
-                                )
+                                <>
+                                  <Badge variant="secondary">{lesson.quiz.questions.length} questions</Badge>
+                                  {isTeacherOrAdmin ? (
+                                      <Button asChild size="sm" variant="secondary">
+                                          <Link to={`/app/lesson/${lesson.id}/quiz`}><FilePenLine className="mr-2 h-4 w-4" />Edit Quiz</Link>
+                                      </Button>
+                                  ) : (
+                                      <Button asChild size="sm">
+                                          <Link to={`/app/quiz/${lesson.quiz.id}`}><ClipboardCheck className="mr-2 h-4 w-4" />Take Quiz</Link>
+                                      </Button>
+                                  )}
+                                </>
                             ) : isTeacherOrAdmin ? (
                                 <Button asChild size="sm" variant="outline">
                                     <Link to={`/app/lesson/${lesson.id}/quiz`}><PlusCircle className="mr-2 h-4 w-4" />Create Quiz</Link>

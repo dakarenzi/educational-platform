@@ -18,6 +18,7 @@ export default function QuizCreatorPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['course'] });
       queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+      queryClient.invalidateQueries({ queryKey: ['teacher-quizzes'] });
       toast.success('Quiz created successfully!');
       navigate(-1);
     },

@@ -87,7 +87,7 @@ export default function CoursesPage() {
         <div className="flex justify-between items-center mb-12">
           <div>
             <h1 className="text-4xl font-bold font-display text-foreground">Courses</h1>
-            <p className="mt-2 text-lg text-muted-foreground">Browse available courses or create a new one.</p>
+            <p className="mt-2 text-lg text-muted-foreground">Discover and enroll in courses.</p>
           </div>
           {isTeacherOrAdmin && (
             <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>

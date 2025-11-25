@@ -264,11 +264,40 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, created);
   });
   // QUIZZES
+  app.get('/api/quizzes', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    await QuizEntity.ensureSeed(c.env, tenantId);
+    const allQuizzes = (await QuizEntity.list(c.env, tenantId)).items;
+    const allLessons = (await LessonEntity.list(c.env, tenantId)).items;
+    const allCourses = (await CourseEntity.list(c.env, tenantId)).items;
+    const lessonMap = new Map(allLessons.map(l => [l.id, l]));
+    const courseMap = new Map(allCourses.map(c => [c.id, c]));
+    const enriched = allQuizzes.map(quiz => {
+      const lesson = lessonMap.get(quiz.lessonId);
+      const course = lesson ? courseMap.get(lesson.courseId) : undefined;
+      return {
+        ...quiz,
+        lessonTitle: lesson?.title,
+        courseTitle: course?.title,
+        courseId: course?.id,
+      };
+    });
+    return ok(c, enriched);
+  });
   app.post('/api/quizzes', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);
-    const quizData = (await c.req.json()) as Partial<Omit<Quiz, 'id' | 'tenantId'>>;
-    if (!isStr(quizData.lessonId) || !isStr(quizData.title) || !Array.isArray(quizData.questions)) return bad(c, 'lessonId, title, and questions array are required');
-    const newQuiz = { id: `quiz-${quizData.lessonId}`, tenantId, ...quizData } as Quiz;
+    const { lessonId, ...quizData } = await c.req.json<Partial<Quiz>>();
+    if (!isStr(quizData.title) || !Array.isArray(quizData.questions)) {
+      return bad(c, 'title and questions array are required');
+    }
+    const id = lessonId ? `quiz-${lessonId}` : `quiz-${crypto.randomUUID()}`;
+    const newQuiz: Quiz = {
+      id,
+      tenantId,
+      lessonId: lessonId || '',
+      title: quizData.title,
+      questions: quizData.questions,
+    };
     newQuiz.questions.forEach(q => { if (!q.id) q.id = crypto.randomUUID() });
     const created = await QuizEntity.create(c.env, tenantId, newQuiz);
     return ok(c, created);
