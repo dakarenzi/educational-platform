@@ -8,6 +8,9 @@ import type { Context } from "hono";
 export interface Env {
   GlobalDurableObject: DurableObjectNamespace<GlobalDurableObject>;
   JWT_SECRET: string;
+  STRIPE_SECRET_KEY?: string;
+  STRIPE_WEBHOOK_SECRET?: string;
+  STRIPE_PRICE_ID_PRO?: string;
 }
 type Doc<T> = { v: number; data: T };
 /**
