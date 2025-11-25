@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { authActions } from '@/store/auth';
 import { api } from '@/lib/api-client';
-import type { LoginResponse, UserRole } from '@shared/types';
+import type { LoginResponse } from '@shared/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LanguageToggle } from '@/components/LanguageToggle';
 const loginSchema = z.object({
@@ -31,7 +31,7 @@ type LoginFormValues = z.infer<typeof loginSchema>;
 type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema) as any,
     defaultValues: { email: '', password: '' },
@@ -76,6 +76,10 @@ export default function LoginPage() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Registration failed.'),
   });
+  // Prevent rendering until i18n is ready, which can cause hook context issues.
+  if (!i18n.isInitialized) {
+    return <div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
   return (
     <div className="min-h-screen w-full bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-6 right-6 flex items-center gap-2">

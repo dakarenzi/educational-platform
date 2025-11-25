@@ -36,6 +36,7 @@ import MockExamTakerPage from '@/pages/student/MockExamTakerPage';
 import SuperAdminDashboard from '@/pages/SuperAdminDashboard';
 import ResourcesPage from '@/pages/ResourcesPage';
 import QuizzesPage from '@/pages/QuizzesPage';
+import BillingPage from '@/pages/BillingPage';
 // Teacher Tools
 import { TeacherLayout } from '@/components/layout/TeacherLayout';
 import TeacherDashboardPage from '@/pages/teacher/TeacherDashboardPage';
@@ -103,6 +104,7 @@ const router = createBrowserRouter([
         { path: "resources", element: <ResourcesPage /> },
         { path: "my-progress", element: <MyProgressPage /> },
         { path: "super-admin", element: <SuperAdminDashboard /> },
+        { path: "billing", element: <BillingPage /> },
         {
           path: "teacher",
           element: <TeacherLayout />,

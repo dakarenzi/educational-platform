@@ -11,6 +11,11 @@ export interface Institution {
   curriculum?: string;
   languages?: string[];
   adminEmail?: string;
+  // Stripe Monetization Fields
+  plan?: 'trial' | 'basic' | 'pro';
+  stripeCustomerId?: string;
+  status?: 'active' | 'canceled' | 'trialing';
+  nextBilling?: number; // Unix timestamp
 }
 export type UserRole = 'admin' | 'teacher' | 'student' | 'super-admin';
 export interface User {

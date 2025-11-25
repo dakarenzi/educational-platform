@@ -3,6 +3,7 @@ import type { Env } from './core-utils';
 import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
 import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload } from "@shared/types";
+import Stripe from 'stripe';
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -125,6 +126,34 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     console.log(`[TENANT REQUEST] New pending tenant created: ${created.id} for ${name}. Notifying super-admins.`);
     return ok(c, created);
   });
+  // STRIPE WEBHOOK (public)
+  app.post('/api/webhooks/stripe', async (c) => {
+    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY);
+    const sig = c.req.header('stripe-signature');
+    const body = await c.req.text();
+    if (!sig) return bad(c, 'Missing Stripe signature.');
+    try {
+      const event = await stripe.webhooks.constructEventAsync(body, sig, c.env.STRIPE_WEBHOOK_SECRET);
+      console.log(`[STRIPE] Received webhook: ${event.type}`);
+      if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+        const subscription = event.data.object as Stripe.Subscription;
+        const customerId = subscription.customer as string;
+        // In a real app, you'd look up the tenantId by stripeCustomerId
+        const tenantId = 'inst-1'; // Mock
+        const institutionEntity = new InstitutionEntity(c.env, tenantId);
+        await institutionEntity.patch({
+          plan: 'pro',
+          status: subscription.status as 'active' | 'trialing',
+          nextBilling: subscription.current_period_end,
+        });
+        console.log(`[STRIPE] Updated tenant ${tenantId} to plan 'pro'.`);
+      }
+      return c.text('OK', 200);
+    } catch (err) {
+      console.error(`[STRIPE] Webhook error: ${(err as Error).message}`);
+      return bad(c, `Webhook Error: ${(err as Error).message}`);
+    }
+  });
   // Middleware to simulate a tenant and user role context
   const tenantMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) => {
     let claims: JWTPayload | null = null;
@@ -186,6 +215,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       curriculum: pending.curriculum,
       languages: pending.languages,
       adminEmail: pending.adminEmail,
+      plan: 'trial',
+      status: 'trialing',
     };
     await InstitutionEntity.create(c.env, 'system', newInstitution);
     console.log(`[APPROVAL] Tenant ${newInstitution.id} activated for ${pending.name}.`);
@@ -220,6 +251,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       curriculum: curriculum || '',
       languages: languages || [],
       adminEmail: adminEmail || '',
+      plan: 'trial',
+      status: 'trialing',
     };
     const created = await InstitutionEntity.create(c.env, 'system', newInstitution);
     return ok(c, created);
@@ -271,10 +304,34 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       timestamp: new Date().toISOString(),
     });
   });
-  // BILLING SIMULATION
+  // BILLING
   app.post('/api/billing/subscribe', async (c) => {
-    console.log(`[BILLING] Tenant ${((c as any).get('tenantId') as string)} initiated subscription.`);
-    return ok(c, { success: true, mockInvoice: `INV-${Date.now()}` });
+    const userRole = (c as any).get('userRole') as UserRole;
+    if (userRole !== 'admin' && userRole !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const tenantId = (c as any).get('tenantId') as string;
+    const { email } = await c.req.json<{ email: string }>();
+    if (!c.env.STRIPE_SECRET_KEY || !c.env.STRIPE_PRICE_ID_PRO) {
+      return bad(c, 'Stripe is not configured on the server.');
+    }
+    const stripe = new Stripe(c.env.STRIPE_SECRET_KEY);
+    const institutionEntity = new InstitutionEntity(c.env, tenantId);
+    const institution = await institutionEntity.getState();
+    let customerId = institution.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({ email, name: institution.name, metadata: { tenantId } });
+      customerId = customer.id;
+      await institutionEntity.patch({ stripeCustomerId: customerId });
+    }
+    const checkoutSession = await stripe.checkout.sessions.create({
+      customer: customerId,
+      payment_method_types: ['card'],
+      line_items: [{ price: c.env.STRIPE_PRICE_ID_PRO, quantity: 1 }],
+      mode: 'subscription',
+      success_url: `${c.req.url.split('/api')[0]}/app/billing?success=true`,
+      cancel_url: `${c.req.url.split('/api')[0]}/app/billing?canceled=true`,
+    });
+    console.log(`[BILLING] Created checkout session for tenant ${tenantId}`);
+    return ok(c, { checkoutUrl: checkoutSession.url });
   });
   // INSTITUTION
   app.get('/api/institution', async (c) => {

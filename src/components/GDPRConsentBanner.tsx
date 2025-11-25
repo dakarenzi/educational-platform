@@ -7,13 +7,25 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 const CONSENT_KEY = 'gdpr_consent';
 export function GDPRConsentBanner() {
-  const [isVisible, setIsVisible] = useState(false);
-  const { t } = useTranslation();
-  useEffect(() => {
-    const consent = localStorage.getItem(CONSENT_KEY);
-    if (consent === null) {
-      setIsVisible(true);
+  const { t, i18n } = useTranslation();
+  // Initialize state directly from localStorage to avoid hook errors during suspense/initial render.
+  const [isVisible, setIsVisible] = useState(() => {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem(CONSENT_KEY) === null;
     }
+    return false;
+  });
+  // This effect ensures that if the consent is given in another tab, the banner hides.
+  useEffect(() => {
+    const handleStorageChange = () => {
+      if (localStorage.getItem(CONSENT_KEY) !== null) {
+        setIsVisible(false);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
   const handleAccept = () => {
     localStorage.setItem(CONSENT_KEY, 'true');
@@ -24,6 +36,10 @@ export function GDPRConsentBanner() {
     setIsVisible(false);
     toast.warning(t('gdprConsent.declineToast'));
   };
+  // Don't render until i18n is ready to prevent other hook-related issues.
+  if (!i18n.isInitialized) {
+    return null;
+  }
   return (
     <AnimatePresence>
       {isVisible && (

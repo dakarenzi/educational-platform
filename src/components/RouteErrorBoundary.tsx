@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { errorReporter } from '@/lib/errorReporter';
 import { ErrorFallback } from './ErrorFallback';
 export function RouteErrorBoundary() {
+  // Call useRouteError unconditionally at the top level of the component.
   const error = useRouteError();
   useEffect(() => {
     if (error) {
@@ -27,7 +28,7 @@ export function RouteErrorBoundary() {
           try {
             errorMessage = JSON.stringify(error);
           } catch {
-            errorMessage = 'Unserializable route error';
+            errorMessage = 'Unserializable route error object';
           }
         }
         errorReporter.report({
@@ -40,7 +41,7 @@ export function RouteErrorBoundary() {
           level: "error",
         });
       } catch (reportingError) {
-        console.error("Error reporting the route error:", reportingError);
+        console.error("Error while reporting the route error:", reportingError);
       }
     }
   }, [error]);
