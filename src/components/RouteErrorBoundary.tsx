@@ -6,19 +6,12 @@ export function RouteErrorBoundary() {
   // Call useRouteError unconditionally at the top level of the component.
   const error = useRouteError();
   useEffect(() => {
-    if (error) {
-      try {
+    try {
+      if (error) {
         let errorMessage = 'Unknown route error';
         let errorStack = '';
         if (isRouteErrorResponse(error)) {
-          errorMessage = `Route Error ${error.status}: ${error.statusText}`;
-          if (error.data) {
-            try {
-              errorMessage += ` - ${JSON.stringify(error.data)}`;
-            } catch {
-              errorMessage += ' - (Unserializable data)';
-            }
-          }
+          errorMessage = `${error.status} ${error.statusText}${error.data ? ` - ${JSON.stringify(error.data, null, 2)}` : ''}`;
         } else if (error instanceof Error) {
           errorMessage = error.message;
           errorStack = error.stack || '';
@@ -40,11 +33,14 @@ export function RouteErrorBoundary() {
           error: error,
           level: "error",
         });
-      } catch (reportingError) {
-        console.error("Error while reporting the route error:", reportingError);
       }
+    } catch (reportingError) {
+      console.error("Error while reporting the route error:", reportingError);
     }
   }, [error]);
+  if (!error) {
+    return <ErrorFallback title="Unknown Error" message="An unexpected error occurred." />;
+  }
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
       return (
@@ -64,7 +60,7 @@ export function RouteErrorBoundary() {
       />
     );
   }
-  // Fallback for non-RouteErrorResponse errors or if error is null/undefined
+  // Fallback for non-RouteErrorResponse errors
   return (
     <ErrorFallback
       title="Unexpected Error"
