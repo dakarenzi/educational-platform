@@ -1,8 +1,8 @@
 import { Hono, type Context, type Next } from "hono";
 import type { Env } from './core-utils';
-import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity, StudentSubscriptionEntity } from "./entities";
+import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity, StudentSubscriptionEntity, PendingQuoteEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
-import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload, StudentSubscription } from "@shared/types";
+import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload, StudentSubscription, PendingQuote } from "@shared/types";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -298,6 +298,35 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     return c.json(exportData, 200, { 'Content-Type': 'application/json', 'Content-Disposition': `attachment; filename="export-${tenantId}.json"` });
   });
+  app.get('/api/super-admin/quotes', async (c) => {
+    if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const status = c.req.query('status');
+    const page = await PendingQuoteEntity.list(c.env, 'system');
+    const items = page.items.filter(q => !status || q.status === status);
+    return ok(c, items);
+  });
+  app.put('/api/super-admin/quotes/:id/approve', async (c) => {
+    if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const id = c.req.param('id');
+    const quoteEntity = new PendingQuoteEntity(c.env, id);
+    if (!(await quoteEntity.exists())) return notFound(c, 'Quote not found');
+    const quote = await quoteEntity.getState();
+    if (quote.status !== 'pending') return bad(c, 'Quote not pending.');
+    await quoteEntity.patch({ status: 'approved' });
+    console.log(`[QUOTE APPROVED] Quote ${id} for tenant ${quote.tenantId}`);
+    return ok(c, { success: true });
+  });
+  app.put('/api/super-admin/quotes/:id/reject', async (c) => {
+    if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const id = c.req.param('id');
+    const { notes } = await c.req.json<{ notes?: string }>();
+    const quoteEntity = new PendingQuoteEntity(c.env, id);
+    if (!(await quoteEntity.exists())) return notFound(c, 'Quote not found');
+    const quote = await quoteEntity.getState();
+    await quoteEntity.patch({ status: 'rejected', notes });
+    console.log(`[QUOTE REJECTED] Quote ${id} for tenant ${quote.tenantId}: ${notes || 'No reason provided'}`);
+    return ok(c, { success: true });
+  });
   // HEALTH ENDPOINT
   app.get('/api/health', async (c) => {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
@@ -333,6 +362,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     console.log(`[STRIPE MOCK] Created subscription ${mockSubId} for tenant ${tenantId}`);
     // Simulate redirect to a success page instead of a real checkout URL
     return ok(c, { checkoutUrl: '/app/billing?success=true' });
+  });
+  app.post('/api/sales/request-quote', async (c) => {
+    const { institutionSize, needs, timeline, adminEmail } = await c.req.json<Partial<PendingQuote>>();
+    if (!isStr(institutionSize) || !isStr(needs) || !isStr(timeline) || !isStr(adminEmail)) return bad(c, 'Required fields missing.');
+    const tenantId = (c as any).get('tenantId');
+    const institutionEntity = new InstitutionEntity(c.env, tenantId);
+    const institution = await institutionEntity.getState();
+    const newQuote: PendingQuote = {
+      id: crypto.randomUUID(),
+      tenantId,
+      institutionSize,
+      needs,
+      timeline: timeline as PendingQuote['timeline'],
+      status: 'pending',
+      submittedAt: new Date().toISOString(),
+      adminEmail
+    };
+    await PendingQuoteEntity.create(c.env, 'system', newQuote);
+    console.log(`[EMAIL TO sales@academicloud.com] New quote request from ${institution.name} (Tenant: ${tenantId}): Size: ${institutionSize}, Needs: ${needs}, Timeline: ${timeline}, Contact: ${adminEmail}`);
+    return ok(c, { success: true, message: 'Quote request submitted.' });
   });
   // STUDENT SUBSCRIPTIONS
   app.get('/api/student/subscriptions', async (c) => {
@@ -371,6 +420,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!(await institutionEntity.exists())) return notFound(c, 'Institution not found');
     const institution = await institutionEntity.getState();
     return ok(c, institution);
+  });
+  app.patch('/api/institution', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const updates = await c.req.json<Partial<Institution>>();
+    const institutionEntity = new InstitutionEntity(c.env, tenantId);
+    if (!(await institutionEntity.exists())) return notFound(c, 'Institution not found');
+    await institutionEntity.patch(updates);
+    return ok(c, await institutionEntity.getState());
   });
   // USERS
   app.get('/api/users', async (c) => {

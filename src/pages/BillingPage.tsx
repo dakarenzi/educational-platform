@@ -1,7 +1,11 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { CreditCard, Check, Star, Loader2, User, Building } from 'lucide-react';
 import { toast } from 'sonner';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { api } from '@/lib/api-client';
 import type { Institution, StudentSubscription } from '@shared/types';
 import { useAuthStore } from '@/store/auth';
@@ -14,11 +18,33 @@ import { Navigate } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 const fetchInstitution = async (): Promise<Institution> => api<Institution>('/api/institution');
 const fetchStudentSubscriptions = async (): Promise<StudentSubscription[]> => api<StudentSubscription[]>('/api/student/subscriptions');
+const quoteSchema = z.object({
+  institutionSize: z.string().min(10, 'Please provide details about your institution size.'),
+  needs: z.string().min(10, 'Please describe your key needs.'),
+  timeline: z.enum(['ASAP', '1-3 months', 'Discuss']),
+  adminEmail: z.string().email('A valid contact email is required.'),
+});
+type QuoteFormValues = z.infer<typeof quoteSchema>;
 export default function BillingPage() {
+  const [isQuoteModalOpen, setIsQuoteModalOpen] = useState(false);
   const user = useAuthStore(s => s.user);
   const queryClient = useQueryClient();
+  const form = useForm<QuoteFormValues>({
+    resolver: zodResolver(quoteSchema),
+    defaultValues: {
+      institutionSize: '',
+      needs: '',
+      timeline: 'ASAP',
+      adminEmail: user?.email || '',
+    },
+  });
   const { data: institution, isLoading: isLoadingInstitution, error: institutionError } = useQuery({
     queryKey: ['institution'],
     queryFn: fetchInstitution,
@@ -29,21 +55,32 @@ export default function BillingPage() {
     queryFn: fetchStudentSubscriptions,
     enabled: !!user && user.role === 'student',
   });
-  const subscribeMutation = useMutation({
-    mutationFn: () => api<{ checkoutUrl?: string }>('/api/billing/subscribe', {
-      method: 'POST',
-      body: JSON.stringify({ email: user?.email }),
+  const trialMutation = useMutation({
+    mutationFn: () => api('/api/institution', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        plan: 'trial',
+        status: 'trialing',
+        nextBilling: Math.floor(Date.now() / 1000) + 30 * 24 * 3600,
+      }),
     }),
-    onSuccess: (data) => {
-      if (data.checkoutUrl) {
-        toast.info('Redirecting to checkout...');
-        window.location.href = data.checkoutUrl;
-      } else {
-        toast.success('Subscription upgraded successfully! (Mocked)');
-        queryClient.invalidateQueries({ queryKey: ['institution'] });
-      }
+    onSuccess: () => {
+      toast.success('30-day trial started!');
+      queryClient.invalidateQueries({ queryKey: ['institution'] });
     },
-    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to start subscription.'),
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to start trial.'),
+  });
+  const quoteMutation = useMutation({
+    mutationFn: (data: QuoteFormValues & { tenantId?: string }) => api('/api/sales/request-quote', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+    onSuccess: () => {
+      toast.success("Quote request submitted! We'll contact you within 24 hours.");
+      setIsQuoteModalOpen(false);
+      form.reset();
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to submit quote request.'),
   });
   const cancelStudentSubMutation = useMutation({
     mutationFn: (subId: string) => api(`/api/student/subscriptions/${subId}/cancel`, { method: 'PUT' }),
@@ -61,7 +98,7 @@ export default function BillingPage() {
   const isStudent = user.role === 'student';
   const tiers = [
     { name: 'Trial', price: '$0', description: 'Explore with basic features.', features: ['Up to 10 students', '2 courses', 'Basic analytics'], plan: 'trial' },
-    { name: 'Pro', price: '$29', priceSuffix: '/ month', description: 'Unlock the full potential.', features: ['Unlimited students', 'Unlimited courses', 'Advanced analytics', 'Priority support'], plan: 'pro', highlight: true },
+    { name: 'Pro', price: 'Custom', priceSuffix: '', description: 'Unlock the full potential.', features: ['Unlimited students', 'Unlimited courses', 'Advanced analytics', 'Priority support'], plan: 'pro', highlight: true },
   ];
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
@@ -116,7 +153,26 @@ export default function BillingPage() {
                         <ul className="space-y-2">{tier.features.map((feature) => (<li key={feature} className="flex items-center gap-2"><Check className="h-4 w-4 text-success" /> <span className="text-sm">{feature}</span></li>))}</ul>
                       </CardContent>
                       <CardContent>
-                        {institution?.plan === tier.plan ? <Button disabled className="w-full">Current Plan</Button> : tier.plan === 'pro' ? <Button className="w-full" onClick={() => subscribeMutation.mutate()} disabled={subscribeMutation.isPending}>{subscribeMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Star className="mr-2 h-4 w-4" />} Upgrade to Pro</Button> : <Button disabled variant="outline" className="w-full">Included</Button>}
+                        {institution?.plan === tier.plan ? <Button disabled className="w-full">Current Plan</Button> :
+                         tier.plan === 'pro' ? (
+                          <Dialog open={isQuoteModalOpen} onOpenChange={setIsQuoteModalOpen}>
+                            <DialogTrigger asChild><Button className="w-full"><Star className="mr-2 h-4 w-4" /> Request Quote</Button></DialogTrigger>
+                            <DialogContent className="sm:max-w-lg">
+                              <DialogHeader><DialogTitle>Request Pro Quote</DialogTitle><DialogDescription>We'll customize a plan for your needs.</DialogDescription></DialogHeader>
+                              <Form {...form}>
+                                <form onSubmit={form.handleSubmit((d) => quoteMutation.mutate({ ...d, tenantId: institution?.id }))} className="space-y-4 pt-4">
+                                  <FormField name="institutionSize" control={form.control} render={({ field }) => <FormItem><FormLabel>Institution Size</FormLabel><FormControl><Textarea placeholder="e.g., 200 students, K-12" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                  <FormField name="needs" control={form.control} render={({ field }) => <FormItem><FormLabel>Key Needs</FormLabel><FormControl><Textarea placeholder="e.g., AI tutor integration, custom branding" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                  <FormField name="timeline" control={form.control} render={({ field }) => <FormItem><FormLabel>Timeline</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select timeline" /></SelectTrigger></FormControl><SelectContent><SelectItem value="ASAP">ASAP</SelectItem><SelectItem value="1-3 months">1-3 months</SelectItem><SelectItem value="Discuss">Let's Discuss</SelectItem></SelectContent></Select><FormMessage /></FormItem>} />
+                                  <FormField name="adminEmail" control={form.control} render={({ field }) => <FormItem><FormLabel>Contact Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>} />
+                                  <Button type="submit" className="w-full" disabled={quoteMutation.isPending}>{quoteMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Submit Request'}</Button>
+                                </form>
+                              </Form>
+                            </DialogContent>
+                          </Dialog>
+                         ) :
+                         <Button variant="outline" className="w-full" onClick={() => trialMutation.mutate()} disabled={trialMutation.isPending}>Start 30-Day Trial</Button>
+                        }
                       </CardContent>
                     </Card>
                   </motion.div>

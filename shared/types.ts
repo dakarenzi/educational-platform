@@ -150,6 +150,17 @@ export interface StudentSubscription {
   expiry: number; // Unix timestamp
   paymentId: string;
 }
+export interface PendingQuote {
+  id: string;
+  tenantId: string;
+  institutionSize: string;
+  needs: string;
+  timeline: 'ASAP' | '1-3 months' | 'Discuss';
+  status: 'pending' | 'approved' | 'rejected';
+  submittedAt: string;
+  adminEmail?: string;
+  notes?: string; // For rejection reasons
+}
 // Auth Types
 export interface LoginResponse {
   token: string;

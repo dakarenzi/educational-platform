@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant, MockExam, MockExamSubmission, Resource, StudentSubscription } from "@shared/types";
+import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant, MockExam, MockExamSubmission, Resource, StudentSubscription, PendingQuote } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
   { id: 'inst-1', name: 'Cloudflare University', country: 'USA', curriculum: 'US', languages: ['en'], adminEmail: 'contact@cfu.edu', plan: 'trial', status: 'trialing' },
   { id: 'inst-2', name: 'Workers Academy', country: 'France', curriculum: 'AEFE', languages: ['fr', 'en'], adminEmail: 'contact@workers.ac', plan: 'trial', status: 'trialing' },
@@ -175,4 +175,19 @@ export class StudentSubscriptionEntity extends IndexedEntity<StudentSubscription
   static readonly indexName = "studentSubscriptions";
   static readonly initialState: StudentSubscription = { id: "", userId: "", tenantId: "", plan: "premium", status: "active", expiry: 0, paymentId: "" };
   static seedData: StudentSubscription[] = [];
+}
+// PENDING QUOTE ENTITY
+export class PendingQuoteEntity extends IndexedEntity<PendingQuote> {
+  static readonly entityName = "pendingQuote";
+  static readonly indexName = "pendingQuotes";
+  static readonly initialState: PendingQuote = {
+    id: "",
+    tenantId: "",
+    institutionSize: "",
+    needs: "",
+    timeline: "ASAP",
+    status: "pending",
+    submittedAt: ""
+  };
+  static seedData: PendingQuote[] = [];
 }
