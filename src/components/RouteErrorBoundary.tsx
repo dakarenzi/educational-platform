@@ -61,7 +61,7 @@ export function RouteErrorBoundary() {
     <ErrorFallback
       title="Unexpected Error"
       message="An unexpected error occurred while loading this page."
-      error={error}
+      error={error || { message: 'Unknown error' }}
       statusMessage="Routing error detected"
     />
   );
