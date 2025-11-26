@@ -82,7 +82,8 @@ function runSetupCommands() {
     "bun install uuid",
     "bun install i18next react-i18next i18next-browser-languagedetector",
     "bun install stripe @types/stripe",
-    "bun install @radix-ui/react-label"
+    "bun install @radix-ui/react-label",
+    "bun install slugify"
 ];
     
     if (commands.length === 0) {
