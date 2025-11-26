@@ -1,6 +1,6 @@
 # AcademiCloud: The Illustrative Educational Platform
 An all-in-one educational platform for creating and managing courses, quizzes, and learning materials with an engaging, illustrative design.
-[cloudflarebutton]
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/dakarenzi/educational-platform)
 AcademiCloud is a comprehensive, multi-tenant educational platform built on Cloudflare's serverless infrastructure. It empowers educational institutions to create, manage, and deliver engaging online learning experiences. The architecture is role-based, catering to the distinct needs of Super Admins, Admins, Teachers, and Students.
 The user interface is designed with an 'Illustrative' artistic style, featuring custom graphics and a human-centered design philosophy to make learning more engaging. All pages follow a consistent, responsive layout (`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`) with generous vertical spacing (`py-8 md:py-10 lg:py-12`).
 ## ✨ Full Feature Overview
