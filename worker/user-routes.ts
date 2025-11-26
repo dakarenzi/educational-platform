@@ -69,13 +69,13 @@ const verifyPassword = async (password: string, hash: string): Promise<boolean> 
   return passwordHash === hash;
 };
 const generateUniqueSlug = async (env: Env, name: string): Promise<string> => {
-  const slugBase = slugify(name, { lower: true, strict: true });
+  const slugBase = slugify(name, { lower: true, strict: true, remove: /[*+~.()'"!:@]/g });
   let slug = slugBase;
   let counter = 1;
   const existingTenants = await InstitutionEntity.list(env, 'system');
   const existingSlugs = new Set(existingTenants.items.map(t => t.slug));
   while (existingSlugs.has(slug)) {
-    slug = `${slugBase}-${counter++}`;
+    slug = `${slugBase}-${++counter}`;
   }
   return slug;
 };

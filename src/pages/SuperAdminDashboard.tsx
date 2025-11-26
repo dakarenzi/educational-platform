@@ -257,7 +257,9 @@ export default function SuperAdminDashboard() {
                 <CardContent className="flex flex-wrap gap-4">
                   <Badge variant="outline"><Users className="mr-2 h-4 w-4" /> {selectedTenant?.usersCount} Users</Badge>
                   <Badge variant="outline"><Building className="mr-2 h-4 w-4" /> {selectedTenant?.coursesCount} Courses</Badge>
-                  <Badge variant="secondary">Slug: {selectedTenant?.slug}</Badge>
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <Badge variant="secondary">Slug: {selectedTenant?.slug || 'auto-generated'}</Badge>
+                  </motion.div>
                 </CardContent>
               </Card>
               <Form {...manageForm}>
@@ -273,8 +275,9 @@ export default function SuperAdminDashboard() {
                     <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Button type="submit" disabled={setDomainMutation.isPending}>{setDomainMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Changes</Button>
                       <Button variant="outline" onClick={async () => {
-                        const { data } = await api<{ tenantId: string }>('/api/get-tenant');
-                        localStorage.setItem('tenantId', data);
+                        const responseData = await api<{ tenantId: string }>('/api/get-tenant');
+                        const tenantId = responseData.tenantId;
+                        document.cookie = `tenantId=${tenantId}; path=/`;
                         navigate('/app/dashboard', { replace: true });
                         toast.success(`Switched to ${selectedTenant?.name}`);
                         setManageDialogOpen(false);
