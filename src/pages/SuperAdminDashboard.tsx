@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { motion } from 'framer-motion';
-import { Building, Users, DollarSign, PlusCircle, Check, X, MoreVertical, Loader2, MessageSquare } from 'lucide-react';
+import { Building, Users, DollarSign, PlusCircle, Check, X, MoreVertical, Loader2, MessageSquare, Trash2, Edit, LogIn } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { api } from '@/lib/api-client';
@@ -23,7 +23,11 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+interface EnrichedInstitution extends Institution {
+  usersCount?: number;
+  coursesCount?: number;
+}
 interface SuperAdminAnalytics {
   totalTenants: number;
   totalUsers: number;
@@ -42,13 +46,16 @@ const tenantFormSchema = z.object({
   }),
 });
 type TenantFormValues = z.infer<typeof tenantFormSchema>;
-const fetchTenants = async (): Promise<Institution[]> => api<Institution[]>('/api/super-admin/tenants', { headers: { 'X-Mock-Role': 'super-admin' } });
+const fetchTenants = async (): Promise<EnrichedInstitution[]> => api<EnrichedInstitution[]>('/api/super-admin/tenants', { headers: { 'X-Mock-Role': 'super-admin' } });
 const fetchAnalytics = async (): Promise<SuperAdminAnalytics> => api<SuperAdminAnalytics>('/api/super-admin/analytics', { headers: { 'X-Mock-Role': 'super-admin' } });
 const fetchPendingTenants = async (): Promise<PendingTenant[]> => api<PendingTenant[]>('/api/super-admin/pending-tenants', { headers: { 'X-Mock-Role': 'super-admin' } });
 const fetchPendingQuotes = async (): Promise<PendingQuote[]> => api<PendingQuote[]>('/api/super-admin/quotes?status=pending', { headers: { 'X-Mock-Role': 'super-admin' } });
 export default function SuperAdminDashboard() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+  const [isManageDialogOpen, setManageDialogOpen] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<EnrichedInstitution | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantFormSchema),
@@ -74,9 +81,12 @@ export default function SuperAdminDashboard() {
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to create tenant.'),
   });
   const approveTenantMutation = useMutation({
-    mutationFn: (tenant: PendingTenant) => api(`/api/super-admin/pending-tenants/${tenant.id}/approve`, { method: 'PUT', headers: { 'X-Mock-Role': 'super-admin' } }),
-    onSuccess: (_, tenant) => {
-      toast.success(`Tenant "${tenant.name}" approved and activated!`);
+    mutationFn: (tenant: PendingTenant) => api<{ success: boolean; tempPassword?: string }>(`/api/super-admin/pending-tenants/${tenant.id}/approve`, { method: 'PUT', headers: { 'X-Mock-Role': 'super-admin' } }),
+    onSuccess: (data, tenant) => {
+      toast.success(`Tenant "${tenant.name}" approved and activated!`, {
+        description: `Admin email: ${tenant.adminEmail}, Temp Password: ${data.tempPassword}`,
+        duration: 10000,
+      });
       queryClient.invalidateQueries({ queryKey: ['super-admin-pending-tenants'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin-tenants'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin-analytics'] });
@@ -90,6 +100,17 @@ export default function SuperAdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['super-admin-pending-tenants'] });
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to reject tenant.'),
+  });
+  const deleteTenantMutation = useMutation({
+    mutationFn: (tenantId: string) => api(`/api/super-admin/tenants/${tenantId}`, { method: 'DELETE', headers: { 'X-Mock-Role': 'super-admin' } }),
+    onSuccess: (_, tenantId) => {
+      toast.success(`Tenant ${tenantId} and all associated data deleted.`);
+      queryClient.invalidateQueries({ queryKey: ['super-admin-tenants'] });
+      queryClient.invalidateQueries({ queryKey: ['super-admin-analytics'] });
+      setManageDialogOpen(false);
+      setSelectedTenant(null);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete tenant.'),
   });
   const approveQuoteMutation = useMutation({
     mutationFn: (quoteId: string) => api(`/api/super-admin/quotes/${quoteId}/approve`, { method: 'PUT', headers: { 'X-Mock-Role': 'super-admin' } }),
@@ -156,7 +177,7 @@ export default function SuperAdminDashboard() {
                 <CardContent>
                   {isLoadingTenants && <Skeleton className="h-48 w-full" />}
                   {tenantsError && <p className="text-destructive">Failed to load tenants.</p>}
-                  {tenants && (tenants.length === 0 ? <div className="text-center py-8"><Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground">No active tenants available.</p></div> : <Table role="table" aria-label="Active Tenants"><TableHeader><TableRow><TableHead>Institution</TableHead><TableHead>Country</TableHead><TableHead>Curriculum</TableHead><TableHead>Languages</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{tenants.map((tenant) => (<TableRow key={tenant.id}><TableCell className="font-medium">{tenant.name}</TableCell><TableCell>{tenant.country}</TableCell><TableCell>{tenant.curriculum}</TableCell><TableCell>{tenant.languages?.join(', ')}</TableCell><TableCell className="text-right"><Button variant="outline" size="sm" disabled>Manage</Button></TableCell></TableRow>))}</TableBody></Table>)}
+                  {tenants && (tenants.length === 0 ? <div className="text-center py-8"><Building className="mx-auto h-12 w-12 text-muted-foreground mb-4" /><p className="text-muted-foreground">No active tenants available.</p></div> : <Table role="table" aria-label="Active Tenants"><TableHeader><TableRow><TableHead>Institution</TableHead><TableHead>Users</TableHead><TableHead>Courses</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader><TableBody>{tenants.map((tenant) => (<TableRow key={tenant.id}><TableCell className="font-medium">{tenant.name}</TableCell><TableCell>{tenant.usersCount}</TableCell><TableCell>{tenant.coursesCount}</TableCell><TableCell className="text-right"><Button variant="outline" size="sm" onClick={() => { setSelectedTenant(tenant); setManageDialogOpen(true); }}>Manage</Button></TableCell></TableRow>))}</TableBody></Table>)}
                 </CardContent>
               </Card>
             </motion.div>
@@ -188,6 +209,39 @@ export default function SuperAdminDashboard() {
             </motion.div>
           </TabsContent>
         </Tabs>
+        <Dialog open={isManageDialogOpen} onOpenChange={setManageDialogOpen}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Manage Tenant: {selectedTenant?.name}</DialogTitle>
+              <DialogDescription>View stats, edit details, or perform actions on this tenant.</DialogDescription>
+            </DialogHeader>
+            <div className="py-4 space-y-6">
+              <Card>
+                <CardHeader><CardTitle>Statistics</CardTitle></CardHeader>
+                <CardContent className="flex gap-4">
+                  <Badge variant="outline"><Users className="mr-2 h-4 w-4" /> {selectedTenant?.usersCount} Users</Badge>
+                  <Badge variant="outline"><Building className="mr-2 h-4 w-4" /> {selectedTenant?.coursesCount} Courses</Badge>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <Button variant="outline" onClick={() => toast.info("Tenant switching is a mock feature.")}><LogIn className="mr-2 h-4 w-4" /> Switch to Tenant</Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild><Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Tenant</Button></AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the tenant and ALL associated data (users, courses, quizzes, etc.). This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => selectedTenant && deleteTenantMutation.mutate(selectedTenant.id)}>Delete Tenant</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </CardContent>
+              </Card>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

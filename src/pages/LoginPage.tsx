@@ -178,7 +178,7 @@ function LoginForm() {
 }
 export default function LoginPage() {
   const isAuthInitialized = useAuthStore(s => s.isInitialized);
-  if (!i18n.isInitialized || !isAuthInitialized) {
+  if (!i18n.isInitialized || !isAuthInitialized || typeof document === 'undefined' || !document.body) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

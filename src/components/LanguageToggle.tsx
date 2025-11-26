@@ -8,12 +8,13 @@ interface LanguageToggleProps {
   className?: string;
 }
 export function LanguageToggle({ className }: LanguageToggleProps) {
-  const { i18n } = useTranslation();
+  // Guard against calling useTranslation before i18n is ready.
   if (!i18n.isInitialized) {
-    return null; // or a loading skeleton
+    return null;
   }
+  const { i18n: i18nInstance } = useTranslation();
   const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
+    i18nInstance.changeLanguage(lng);
   };
   return (
     <DropdownMenu>
@@ -24,10 +25,10 @@ export function LanguageToggle({ className }: LanguageToggleProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => changeLanguage('en')} disabled={i18n.language === 'en'}>
+        <DropdownMenuItem onClick={() => changeLanguage('en')} disabled={i18nInstance.language === 'en'}>
           English
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => changeLanguage('fr')} disabled={i18n.language === 'fr'}>
+        <DropdownMenuItem onClick={() => changeLanguage('fr')} disabled={i18nInstance.language === 'fr'}>
           Français
         </DropdownMenuItem>
       </DropdownMenuContent>

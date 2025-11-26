@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 export function useTheme() {
   const [isDark, setIsDark] = useState<boolean | undefined>(() => {
-    if (typeof window === 'undefined') return undefined;
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
     try {
       const savedTheme = localStorage.getItem('theme');
       if (savedTheme) return savedTheme === 'dark';
@@ -11,7 +13,9 @@ export function useTheme() {
     }
   });
   useEffect(() => {
-    if (typeof window === 'undefined' || isDark === undefined) return;
+    if (typeof window === 'undefined' || isDark === undefined) {
+      return;
+    }
     if (isDark) {
       document.documentElement.classList.add('dark');
       localStorage.setItem('theme', 'dark');
@@ -21,7 +25,7 @@ export function useTheme() {
     }
   }, [isDark]);
   const toggleTheme = useCallback(() => {
-    setIsDark(prev => !prev);
+    setIsDark(prev => (prev === undefined ? false : !prev));
   }, []);
   return { isDark, toggleTheme };
 }

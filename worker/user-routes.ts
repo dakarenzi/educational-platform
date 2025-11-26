@@ -25,7 +25,6 @@ const base64UrlDecode = (str: string): ArrayBuffer => {
 };
 const DEFAULT_JWT_SECRET = 'academicloud-secret-key-2024';
 const getSigningKey = async (secret: string): Promise<CryptoKey> => {
-  // Ensure we never try to import a key from an empty Uint8Array which causes a DataError.
   const secretToUse = (secret && secret.length > 0) ? secret : DEFAULT_JWT_SECRET;
   if (!secret || secret.length === 0) {
     console.warn('JWT secret is empty or falsy; falling back to DEFAULT_JWT_SECRET. Set JWT_SECRET in Bindings for production.');
@@ -133,13 +132,12 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       const event = await c.req.json<any>();
       console.log(`[STRIPE MOCK] Received webhook: ${event.type}`);
       if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
-        // In a real app, you'd look up the tenantId by stripeCustomerId from the event data.
-        const tenantId = 'inst-1'; // Mock for demo
+        const tenantId = 'inst-1';
         const institutionEntity = new InstitutionEntity(c.env, tenantId);
         await institutionEntity.patch({
           plan: 'pro',
           status: 'active',
-          nextBilling: Math.floor(Date.now() / 1000) + 2592000, // 30 days from now
+          nextBilling: Math.floor(Date.now() / 1000) + 2592000,
         });
         console.log(`[STRIPE MOCK] Updated tenant ${tenantId} to plan 'pro'.`);
       }
@@ -163,7 +161,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     return c.text('OK', 200);
   });
-  // Middleware to simulate a tenant and user role context
+  // Middleware
   const tenantMiddleware = async (c: Context<{ Bindings: Env }>, next: Next) => {
     let claims: JWTPayload | null = null;
     const authHeader = c.req.header('Authorization');
@@ -181,7 +179,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       (c as any).set('userRole', claims.role);
       (c as any).set('tenantId', claims.tenantId);
     } else {
-      // Fallback to mock role for development/testing if no JWT is provided
       const mockUserRole = c.req.header('X-Mock-Role') as UserRole || 'student';
       (c as any).set('userRole', mockUserRole);
       (c as any).set('userId', `user-${mockUserRole}-1`);
@@ -199,7 +196,38 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
     await InstitutionEntity.ensureSeed(c.env, 'system');
     const page = await InstitutionEntity.list(c.env, 'system');
-    return ok(c, page.items);
+    const enrichedTenants = await Promise.all(page.items.map(async (tenant) => {
+      const users = await UserEntity.list(c.env, tenant.id);
+      const courses = await CourseEntity.list(c.env, tenant.id);
+      return {
+        ...tenant,
+        usersCount: users.items.length,
+        coursesCount: courses.items.length,
+      };
+    }));
+    return ok(c, enrichedTenants);
+  });
+  app.delete('/api/super-admin/tenants/:id', async (c) => {
+    if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const tenantId = c.req.param('id');
+    if (!isStr(tenantId)) return bad(c, 'Invalid tenant ID');
+    console.log(`[CASCADE DELETE] Starting deletion for tenant: ${tenantId}`);
+    const entitiesToDelete = [
+      UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity,
+      EnrollmentEntity, QuizSubmissionEntity, MockExamEntity, MockExamSubmissionEntity,
+      ResourceEntity, StudentSubscriptionEntity, ParentLinkEntity
+    ];
+    for (const Entity of entitiesToDelete) {
+      const list = await Entity.list(c.env, tenantId);
+      if (list.items.length > 0) {
+        const ids = list.items.map(item => item.id);
+        await Entity.deleteMany(c.env, tenantId, ids);
+        console.log(`[CASCADE DELETE] Deleted ${ids.length} items from ${Entity.entityName} for tenant ${tenantId}`);
+      }
+    }
+    await InstitutionEntity.delete(c.env, 'system', tenantId);
+    console.log(`[CASCADE DELETE] Deleted institution ${tenantId}`);
+    return ok(c, { success: true });
   });
   app.get('/api/super-admin/pending-tenants', async (c) => {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
@@ -228,10 +256,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       status: 'trialing',
     };
     await InstitutionEntity.create(c.env, 'system', newInstitution);
+    const tempPassword = crypto.randomUUID().substring(0, 8);
+    const passwordHash = await hashPassword(tempPassword);
+    const adminUser: User = {
+      id: crypto.randomUUID(),
+      tenantId: newInstitution.id,
+      name: 'Admin',
+      email: pending.adminEmail,
+      role: 'admin',
+      passwordHash,
+    };
+    await UserEntity.create(c.env, newInstitution.id, adminUser);
     console.log(`[APPROVAL] Tenant ${newInstitution.id} activated for ${pending.name}.`);
     console.log(`[PROVISIONING] Simulating resource creation for ${newInstitution.id}: KV, R2, Vectorize...`);
-    console.log(`[EMAIL SIM] Sending approval notification to ${pending.adminEmail}.`);
-    return ok(c, { success: true });
+    console.log(`[EMAIL SIM] Sending approval notification to ${pending.adminEmail}. Credentials: email=${pending.adminEmail}, password=${tempPassword}`);
+    return ok(c, { success: true, tempPassword });
   });
   app.put('/api/super-admin/pending-tenants/:id/reject', async (c) => {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
@@ -268,16 +307,15 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   });
   app.get('/api/super-admin/analytics', async (c) => {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
-    // This is a mock aggregation. A real implementation would iterate through all tenants.
     const totalTenants = (await InstitutionEntity.list(c.env, 'system')).items.length;
-    const totalUsers = (await UserEntity.list(c.env, 'inst-1')).items.length; // Mock for one tenant
+    const totalUsers = (await UserEntity.list(c.env, 'inst-1')).items.length;
     const mockRevenue = 599 * totalTenants;
     return ok(c, { totalTenants, totalUsers, mockRevenue });
   });
   app.get('/api/export-data', async (c) => {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
     const tenantId = c.req.query('tenantId');
-    const format = c.req.query('format') || 'json'; // 'json' or 'csv'
+    const format = c.req.query('format') || 'json';
     if (!tenantId) return bad(c, 'tenantId query parameter is required.');
     console.log(`[AUDIT] Data export requested for tenant ${tenantId} by super-admin.`);
     const users = (await UserEntity.list(c.env, tenantId)).items;
@@ -336,9 +374,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const mockUsers = await UserEntity.list(c.env, 'inst-1');
     return ok(c, {
       status: 'ok',
-      uptime: 0, // process.uptime() is not available in Workers. This is a placeholder.
+      uptime: 0,
       tenantCount: tenants.items.length,
-      activeUsers: mockUsers.items.length, // Mock for one tenant
+      activeUsers: mockUsers.items.length,
       timestamp: new Date().toISOString(),
     });
   });
@@ -358,10 +396,9 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       plan: 'pro',
       stripeCustomerId: mockCustomerId,
       status: 'active',
-      nextBilling: Math.floor(Date.now() / 1000) + 2592000, // 30 days from now
+      nextBilling: Math.floor(Date.now() / 1000) + 2592000,
     });
     console.log(`[STRIPE MOCK] Created subscription ${mockSubId} for tenant ${tenantId}`);
-    // Simulate redirect to a success page instead of a real checkout URL
     return ok(c, { checkoutUrl: '/app/billing?success=true' });
   });
   app.post('/api/sales/request-quote', async (c) => {
@@ -398,7 +435,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tenantId = (c as any).get('tenantId');
     if (!userId) return bad(c, 'Unauthorized');
     const now = Math.floor(Date.now() / 1000);
-    const expiry = plan === 'basic' ? now + 7776000 : now + 15552000; // 90 or 180 days
+    const expiry = plan === 'basic' ? now + 7776000 : now + 15552000;
     const price = plan === 'basic' ? 7.99 : 16.99;
     const paymentId = `mock_stripe_${plan}_${crypto.randomUUID()}`;
     const userEntity = new UserEntity(c.env, userId);
@@ -528,7 +565,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tenantId = ((c as any).get('tenantId') as string);
     const id = c.req.param('id');
     const updates = await c.req.json<Partial<User>>();
-    // Security check: ensure user can only update themselves, or if admin/super-admin
     const currentUserId = (c as any).get('userId');
     const currentUserRole = (c as any).get('userRole');
     if (id !== currentUserId && !['admin', 'super-admin'].includes(currentUserRole)) {
@@ -538,7 +574,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!(await userEntity.exists())) return notFound(c, 'User not found');
     const user = await userEntity.getState();
     if (user.tenantId !== tenantId && currentUserRole !== 'super-admin') return notFound(c, 'User not found in this institution');
-    // Prevent role escalation
     if (updates.role && !['admin', 'super-admin'].includes(currentUserRole)) {
         delete updates.role;
     }
@@ -547,14 +582,14 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { passwordHash: _, ...userResponse } = updatedUser;
     return ok(c, userResponse);
   });
-  // COURSES (CMS-like routes)
-  app.get('/api/cms/courses', async (c) => {
+  // COURSES
+  app.get('/api/courses', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);
     await CourseEntity.ensureSeed(c.env, tenantId);
     const page = await CourseEntity.list(c.env, tenantId);
     return ok(c, page.items);
   });
-  app.post('/api/cms/courses', async (c) => {
+  app.post('/api/courses', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);
     const { title, description, teacherId } = (await c.req.json()) as Partial<Omit<Course, 'id' | 'tenantId'>>;
     if (!isStr(title) || !isStr(description) || !isStr(teacherId)) {
@@ -562,56 +597,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     const newCourse = { id: crypto.randomUUID(), tenantId, title, description, teacherId };
     const created = await CourseEntity.create(c.env, tenantId, newCourse);
-    console.log(`[WEBHOOK] Course created: ${created.id}`);
     return ok(c, created);
-  });
-  app.get('/api/cms/courses/:id', async (c) => {
-    const tenantId = ((c as any).get('tenantId') as string);
-    const id = c.req.param('id') as string;
-    const courseEntity = new CourseEntity(c.env, id);
-    if (!(await courseEntity.exists())) return notFound(c, 'Course not found');
-    const course = await courseEntity.getState();
-    if (course.tenantId !== tenantId) return notFound(c, 'Course not found in this institution');
-    await LessonEntity.ensureSeed(c.env, tenantId);
-    await QuizEntity.ensureSeed(c.env, tenantId);
-    const allLessons = await LessonEntity.list(c.env, tenantId);
-    const allQuizzes = await QuizEntity.list(c.env, tenantId);
-    const quizMap = new Map<string, Quiz>();
-    allQuizzes.items.forEach(quiz => quizMap.set(quiz.lessonId, quiz));
-    const courseLessons = allLessons.items
-      .filter(lesson => lesson.courseId === id)
-      .map(lesson => ({ ...lesson, quiz: quizMap.get(lesson.id) }));
-    const courseWithLessons: Course = { ...course, lessons: courseLessons };
-    return ok(c, courseWithLessons);
-  });
-  app.put('/api/cms/courses/:id', async (c) => {
-    const tenantId = ((c as any).get('tenantId') as string);
-    const id = c.req.param('id') as string;
-    const { title, description } = (await c.req.json()) as Partial<Omit<Course, 'id' | 'tenantId' | 'teacherId'>>;
-    if (!isStr(title) || !isStr(description)) return bad(c, 'title and description are required');
-    const courseEntity = new CourseEntity(c.env, id);
-    if (!(await courseEntity.exists())) return notFound(c, 'Course not found');
-    const currentCourse = await courseEntity.getState();
-    if (currentCourse.tenantId !== tenantId) return notFound(c, 'Course not found in this institution');
-    const updatedCourse = { ...currentCourse, title, description };
-    await courseEntity.save(updatedCourse);
-    console.log(`[WEBHOOK] Course updated: ${updatedCourse.id}`);
-    return ok(c, updatedCourse);
-  });
-  app.delete('/api/cms/courses/:id', async (c) => {
-    const tenantId = ((c as any).get('tenantId') as string);
-    const id = c.req.param('id') as string;
-    const deleted = await CourseEntity.delete(c.env, tenantId, id);
-    if (!deleted) return notFound(c, 'Course not found');
-    console.log(`[WEBHOOK] Course deleted: ${id}`);
-    return ok(c, { success: true });
-  });
-  // Public-facing routes (re-implemented)
-  app.get('/api/courses', async (c) => {
-    const tenantId = ((c as any).get('tenantId') as string);
-    await CourseEntity.ensureSeed(c.env, tenantId);
-    const page = await CourseEntity.list(c.env, tenantId);
-    return ok(c, page.items);
   });
   app.get('/api/courses/:id', async (c) => {
     const tenantId = ((c as any).get('tenantId') as string);
@@ -631,6 +617,26 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       .map(lesson => ({ ...lesson, quiz: quizMap.get(lesson.id) }));
     const courseWithLessons: Course = { ...course, lessons: courseLessons };
     return ok(c, courseWithLessons);
+  });
+  app.put('/api/courses/:id', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const id = c.req.param('id') as string;
+    const { title, description } = (await c.req.json()) as Partial<Omit<Course, 'id' | 'tenantId' | 'teacherId'>>;
+    if (!isStr(title) || !isStr(description)) return bad(c, 'title and description are required');
+    const courseEntity = new CourseEntity(c.env, id);
+    if (!(await courseEntity.exists())) return notFound(c, 'Course not found');
+    const currentCourse = await courseEntity.getState();
+    if (currentCourse.tenantId !== tenantId) return notFound(c, 'Course not found in this institution');
+    const updatedCourse = { ...currentCourse, title, description };
+    await courseEntity.save(updatedCourse);
+    return ok(c, updatedCourse);
+  });
+  app.delete('/api/courses/:id', async (c) => {
+    const tenantId = ((c as any).get('tenantId') as string);
+    const id = c.req.param('id') as string;
+    const deleted = await CourseEntity.delete(c.env, tenantId, id);
+    if (!deleted) return notFound(c, 'Course not found');
+    return ok(c, { success: true });
   });
   // TEACHER-SPECIFIC ROUTES
   app.get('/api/teacher/courses', async (c) => {
@@ -806,9 +812,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     let items = page.items;
     if (lessonId) items = items.filter(r => r.lessonId === lessonId);
     if (search) items = items.filter(r => r.title.toLowerCase().includes(search) || r.description?.toLowerCase().includes(search));
-    // Mock student enrollment check
     if (((c as any).get('userRole') as UserRole) === 'student') {
-        const studentEnrolledCourseIds = ['course-1']; // Mock
+        const studentEnrolledCourseIds = ['course-1'];
         const allLessons = (await LessonEntity.list(c.env, tenantId)).items;
         const enrolledLessonIds = allLessons.filter(l => studentEnrolledCourseIds.includes(l.courseId)).map(l => l.id);
         items = items.filter(r => !r.lessonId || enrolledLessonIds.includes(r.lessonId));
@@ -834,7 +839,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if (!(await resourceEntity.exists())) return notFound(c, 'Resource not found');
     const current = await resourceEntity.getState();
     if (current.tenantId !== tenantId) return notFound(c, 'Resource not found in this institution');
-    // In a real app, check creatorId against the logged-in user
     await resourceEntity.patch(updates);
     return ok(c, await resourceEntity.getState());
   });
@@ -960,7 +964,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
         totalStudents,
         activeCourses: totalCourses,
         avgScore,
-        completionRate: 76, // This remains mock for now
+        completionRate: 76,
       },
       progressData: mockProgressData,
       recentActivity,
@@ -972,7 +976,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tenantId = ((c as any).get('tenantId') as string);
     await MockExamEntity.ensureSeed(c.env, tenantId);
     const page = await MockExamEntity.list(c.env, tenantId);
-    // Enrich with submissions
     const allSubmissions = await MockExamSubmissionEntity.list(c.env, tenantId);
     const enriched = page.items.map(exam => {
       const submissions = allSubmissions.items.filter(s => s.examId === exam.id);
@@ -1036,7 +1039,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
   // AI TUTOR
   const tutorHandler = async (c: Context, mockResponses: { en: string; fr: string }) => {
     const { language = 'en' } = (await c.req.json()) as { content: string; language: 'en' | 'fr' };
-    await new Promise(res => setTimeout(res, 1000)); // Simulate AI processing time
+    await new Promise(res => setTimeout(res, 1000));
     const response = language === 'fr' ? mockResponses.fr : mockResponses.en;
     return ok(c, { response });
   };
