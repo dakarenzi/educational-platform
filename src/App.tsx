@@ -38,24 +38,20 @@ if (typeof window !== 'undefined' && !(window as any).__vibe_error_handlers_inst
   window.addEventListener('error', handleGlobalError);
   (window as any).__vibe_error_handlers_installed = true;
 }
-
 export default function App() {
-
-  // Global error handlers are registered once at module initialization.
+  if (!i18n.isInitialized) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
   return (
-    <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-      {!i18n.isInitialized ? (
-        <div className="flex h-screen w-full items-center justify-center bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : (
-        <>
-          <AuthInitializer />
-          <RouterProvider router={router} />
-          <Toaster richColors position="bottom-right" />
-          <GDPRConsentBanner />
-        </>
-      )}
-    </Suspense>
+    <>
+      <AuthInitializer />
+      <RouterProvider router={router} />
+      <Toaster richColors position="bottom-right" />
+      <GDPRConsentBanner />
+    </>
   );
 }

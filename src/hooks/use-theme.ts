@@ -1,19 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 export function useTheme() {
-  const [isDark, setIsDark] = useState<boolean | undefined>(() => {
-    if (typeof window === 'undefined') {
-      return undefined;
-    }
-    try {
-      const savedTheme = localStorage.getItem('theme');
-      if (savedTheme) return savedTheme === 'dark';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
-    } catch (e) {
-      return false;
-    }
-  });
+  const [isDark, setIsDark] = useState<boolean | undefined>(undefined);
   useEffect(() => {
-    if (typeof window === 'undefined' || isDark === undefined) {
+    // This effect runs only on the client
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+      setIsDark(savedTheme === 'dark');
+    } else {
+      setIsDark(window.matchMedia('(prefers-color-scheme: dark)').matches);
+    }
+  }, []);
+  useEffect(() => {
+    if (isDark === undefined) {
       return;
     }
     if (isDark) {
@@ -25,7 +23,7 @@ export function useTheme() {
     }
   }, [isDark]);
   const toggleTheme = useCallback(() => {
-    setIsDark(prev => (prev === undefined ? false : !prev));
+    setIsDark(prev => !prev);
   }, []);
   return { isDark, toggleTheme };
 }

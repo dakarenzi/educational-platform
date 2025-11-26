@@ -16,6 +16,8 @@ export interface Institution {
   stripeCustomerId?: string;
   status?: 'active' | 'canceled' | 'trialing';
   nextBilling?: number; // Unix timestamp
+  slug?: string;
+  customDomain?: string;
 }
 export type UserRole = 'admin' | 'teacher' | 'student' | 'super-admin' | 'parent';
 export interface User {

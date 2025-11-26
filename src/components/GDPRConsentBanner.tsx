@@ -6,14 +6,14 @@ import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 const CONSENT_KEY = 'gdpr_consent';
-function GDPRConsentBannerLogic() {
-  const { t } = useTranslation();
+export function GDPRConsentBanner() {
+  const { t, i18n } = useTranslation();
   const [isVisible, setIsVisible] = useState(false);
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.localStorage) {
+    if (i18n.isInitialized && typeof window !== 'undefined' && window.localStorage) {
       setIsVisible(localStorage.getItem(CONSENT_KEY) === null);
     }
-  }, []);
+  }, [i18n.isInitialized]);
   const handleAccept = () => {
     localStorage.setItem(CONSENT_KEY, 'true');
     setIsVisible(false);
@@ -23,6 +23,9 @@ function GDPRConsentBannerLogic() {
     setIsVisible(false);
     toast.warning(t('gdprConsent.declineToast'));
   };
+  if (!i18n.isInitialized) {
+    return null;
+  }
   return (
     <AnimatePresence>
       {isVisible && (
@@ -50,11 +53,4 @@ function GDPRConsentBannerLogic() {
       )}
     </AnimatePresence>
   );
-}
-export function GDPRConsentBanner() {
-  const { i18n } = useTranslation();
-  if (!i18n.isInitialized) {
-    return null;
-  }
-  return <GDPRConsentBannerLogic />;
 }

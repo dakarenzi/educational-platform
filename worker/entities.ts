@@ -1,8 +1,8 @@
 import { IndexedEntity } from "./core-utils";
 import type { User, Course, Lesson, Quiz, FlashcardDeck, Flashcard, Institution, Enrollment, QuizSubmission, PendingTenant, MockExam, MockExamSubmission, Resource, StudentSubscription, PendingQuote, ParentLink } from "@shared/types";
 const MOCK_INSTITUTIONS: Institution[] = [
-  { id: 'inst-1', name: 'Cloudflare University', country: 'USA', curriculum: 'US', languages: ['en'], adminEmail: 'contact@cfu.edu', plan: 'trial', status: 'trialing' },
-  { id: 'inst-2', name: 'Workers Academy', country: 'France', curriculum: 'AEFE', languages: ['fr', 'en'], adminEmail: 'contact@workers.ac', plan: 'trial', status: 'trialing' },
+  { id: 'inst-1', name: 'Cloudflare University', country: 'USA', curriculum: 'US', languages: ['en'], adminEmail: 'contact@cfu.edu', plan: 'trial', status: 'trialing', slug: 'cloudflare-university' },
+  { id: 'inst-2', name: 'Workers Academy', country: 'France', curriculum: 'AEFE', languages: ['fr', 'en'], adminEmail: 'contact@workers.ac', plan: 'trial', status: 'trialing', slug: 'workers-academy' },
 ];
 const MOCK_USERS: User[] = [
   { id: 'user-admin-1', tenantId: 'inst-1', name: 'Dr. Evelyn Reed', role: 'admin', avatarUrl: 'https://i.pravatar.cc/150?u=admin1' },
@@ -68,7 +68,7 @@ const MOCK_RESOURCES: Resource[] = [
 export class InstitutionEntity extends IndexedEntity<Institution> {
   static readonly entityName = "institution";
   static readonly indexName = "institutions";
-  static readonly initialState: Institution = { id: "", name: "", country: "", curriculum: "", languages: [], adminEmail: "", plan: 'trial', status: 'trialing' };
+  static readonly initialState: Institution = { id: "", name: "", country: "", curriculum: "", languages: [], adminEmail: "", plan: 'trial', status: 'trialing', slug: '', customDomain: '' };
   static seedData = MOCK_INSTITUTIONS;
 }
 // USER ENTITY

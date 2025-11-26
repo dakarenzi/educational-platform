@@ -1,10 +1,11 @@
 import { enableMapSet } from "immer";
 enableMapSet();
-import { StrictMode } from 'react'
+import { StrictMode, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   createBrowserRouter,
   Navigate,
+  RouterProvider,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -13,6 +14,7 @@ import '@/index.css'
 import i18n from './i18n';
 import { I18nextProvider } from 'react-i18next';
 import App from './App';
+import { Loader2 } from 'lucide-react';
 // Pages
 import LoginPage from '@/pages/LoginPage';
 import RequestTenantPage from '@/pages/RequestTenantPage';
@@ -98,11 +100,13 @@ export const router = createBrowserRouter([
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <I18nextProvider i18n={i18n}>
-          <App />
-        </I18nextProvider>
-      </QueryClientProvider>
+      <Suspense fallback={<div className="flex h-screen w-full items-center justify-center bg-background"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+        <QueryClientProvider client={queryClient}>
+          <I18nextProvider i18n={i18n}>
+            <App />
+          </I18nextProvider>
+        </QueryClientProvider>
+      </Suspense>
     </ErrorBoundary>
   </StrictMode>,
 )

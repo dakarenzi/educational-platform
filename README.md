@@ -69,6 +69,11 @@ This project is designed for a two-part deployment to the Cloudflare network.
     ```sh
     wrangler pages deploy dist/
     ```
+## 🌐 Custom Domains
+1.  **Auto-Slug Generation:** On tenant creation or approval, a unique URL-friendly slug is automatically generated from the institution's name (e.g., `cloudflare-university`). This slug can be used as a subdomain.
+2.  **Custom Domain Setup:** In the Super Admin Dashboard, use the "Manage" modal for a tenant to set a custom domain (e.g., `learn.myschool.edu`). The system validates the format and uniqueness.
+3.  **DNS Configuration:** To make a custom domain live, you would point its `CNAME` record to your project's Cloudflare Worker URL (e.g., `academcloud.your-username.workers.dev`).
+4.  **Frontend Routing:** The application backend identifies the correct tenant by inspecting the `Host` header of incoming requests, matching it against either a custom domain or a subdomain slug. This ensures users always see the correct institution's content.
 ## 🔧 Troubleshooting
 *   **Authentication Issues:** The application uses a mocked authentication system. For local testing, you can simulate different user roles by sending the `X-Mock-Role` header in your API requests with a value of `student`, `teacher`, `admin`, or `super-admin`.
 *   **No Initial Data:** The application seeds mock data on the first request to an entity. If you don't see any courses, users, etc., try refreshing the relevant page.

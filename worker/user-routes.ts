@@ -3,6 +3,7 @@ import type { Env } from './core-utils';
 import { InstitutionEntity, UserEntity, CourseEntity, LessonEntity, QuizEntity, FlashcardDeckEntity, EnrollmentEntity, QuizSubmissionEntity, PendingTenantEntity, MockExamEntity, MockExamSubmissionEntity, ResourceEntity, StudentSubscriptionEntity, PendingQuoteEntity, ParentLinkEntity } from "./entities";
 import { ok, bad, notFound, isStr } from './core-utils';
 import type { Course, Lesson, Quiz, FlashcardDeck, Enrollment, QuizSubmission, User, Institution, UserRole, PendingTenant, MockExam, MockExamSubmission, MockExamQuestion, Resource, JWTPayload, StudentSubscription, PendingQuote, ParentLink } from "@shared/types";
+import slugify from "slugify";
 export type AppContext = {
   Variables: {
     tenantId: string;
@@ -67,8 +68,32 @@ const verifyPassword = async (password: string, hash: string): Promise<boolean> 
   const passwordHash = await hashPassword(password);
   return passwordHash === hash;
 };
+const generateUniqueSlug = async (env: Env, name: string): Promise<string> => {
+  const slugBase = slugify(name, { lower: true, strict: true });
+  let slug = slugBase;
+  let counter = 1;
+  const existingTenants = await InstitutionEntity.list(env, 'system');
+  const existingSlugs = new Set(existingTenants.items.map(t => t.slug));
+  while (existingSlugs.has(slug)) {
+    slug = `${slugBase}-${counter++}`;
+  }
+  return slug;
+};
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
-  // --- AUTH ROUTES ---
+  // --- PUBLIC ROUTES ---
+  app.get('/api/get-tenant', async (c) => {
+    const host = c.req.header('Host') || '';
+    const [subdomain] = host.split('.');
+    const tenants = await InstitutionEntity.list(c.env, 'system');
+    let tenantId: string | null = null;
+    for (const t of tenants.items) {
+      if (t.customDomain === host || t.slug === subdomain) {
+        tenantId = t.id;
+        break;
+      }
+    }
+    return ok(c, { tenantId: tenantId || 'inst-1' }); // Fallback for dev
+  });
   app.post('/api/auth/register', async (c) => {
     const { email, password, name, role = 'student' } = await c.req.json();
     if (!isStr(email) || !isStr(password) || !isStr(name)) return bad(c, 'Email, password, and name are required.');
@@ -110,7 +135,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     console.log('User logged out. In a real app, you might blacklist the token here.');
     return ok(c, { success: true });
   });
-  // PUBLIC ROUTE FOR TENANT REQUESTS
   app.post('/api/tenant-request', async (c) => {
     const { name, country, curriculum, languages, adminEmail, verificationDomain } = await c.req.json<Partial<PendingTenant>>();
     if (!isStr(name) || !isStr(country) || !isStr(curriculum) || !Array.isArray(languages) || !isStr(adminEmail)) {
@@ -126,7 +150,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     console.log(`[TENANT REQUEST] New pending tenant created: ${created.id} for ${name}. Notifying super-admins.`);
     return ok(c, created);
   });
-  // STRIPE WEBHOOK (public, mocked)
   app.post('/api/webhooks/stripe', async (c) => {
     try {
       const event = await c.req.json<any>();
@@ -244,6 +267,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     pending.status = 'approved';
     pending.approvedAt = new Date().toISOString();
     await pendingEntity.save(pending);
+    const slug = await generateUniqueSlug(c.env, pending.name);
     const newInstitution: Institution = {
       id: `inst-${pending.id.substring(0, 8)}`,
       name: pending.name,
@@ -254,6 +278,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       adminEmail: pending.adminEmail,
       plan: 'trial',
       status: 'trialing',
+      slug,
     };
     await InstitutionEntity.create(c.env, 'system', newInstitution);
     const tempPassword = crypto.randomUUID().substring(0, 8);
@@ -267,7 +292,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       passwordHash,
     };
     await UserEntity.create(c.env, newInstitution.id, adminUser);
-    console.log(`[APPROVAL] Tenant ${newInstitution.id} activated for ${pending.name}.`);
+    console.log(`[APPROVAL] Tenant ${newInstitution.id} activated for ${pending.name} with slug ${slug}.`);
     console.log(`[PROVISIONING] Simulating resource creation for ${newInstitution.id}: KV, R2, Vectorize...`);
     console.log(`[EMAIL SIM] Sending approval notification to ${pending.adminEmail}. Credentials: email=${pending.adminEmail}, password=${tempPassword}`);
     return ok(c, { success: true, tempPassword });
@@ -292,6 +317,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
     const { name, country, curriculum, languages, adminEmail } = await c.req.json<Partial<Institution>>();
     if (!isStr(name)) return bad(c, 'name is required');
+    const slug = await generateUniqueSlug(c.env, name);
     const newInstitution: Institution = {
       id: crypto.randomUUID(),
       name,
@@ -301,9 +327,27 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       adminEmail: adminEmail || '',
       plan: 'trial',
       status: 'trialing',
+      slug,
     };
     const created = await InstitutionEntity.create(c.env, 'system', newInstitution);
     return ok(c, created);
+  });
+  app.post('/api/super-admin/tenants/:id/set-slug', async (c) => {
+    if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);
+    const id = c.req.param('id');
+    const { customDomain } = await c.req.json<{ customDomain: string }>();
+    if (!isStr(customDomain)) return bad(c, 'Invalid domain');
+    if (!/^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/.test(customDomain)) {
+      return bad(c, 'Invalid domain format.');
+    }
+    const existingTenants = await InstitutionEntity.list(c.env, 'system');
+    if (existingTenants.items.some(t => t.customDomain === customDomain && t.id !== id)) {
+      return bad(c, 'Domain is already in use by another tenant.');
+    }
+    const tenantEntity = new InstitutionEntity(c.env, id);
+    if (!(await tenantEntity.exists())) return notFound(c, 'Tenant not found');
+    await tenantEntity.patch({ customDomain });
+    return ok(c, { success: true });
   });
   app.get('/api/super-admin/analytics', async (c) => {
     if ((c as any).get('userRole') !== 'super-admin') return c.json({ error: 'Forbidden' }, 403);

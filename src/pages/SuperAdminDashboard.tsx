@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -46,6 +46,13 @@ const tenantFormSchema = z.object({
   }),
 });
 type TenantFormValues = z.infer<typeof tenantFormSchema>;
+const manageTenantFormSchema = z.object({
+  customDomain: z.string().optional().refine(
+    (val) => !val || /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/.test(val),
+    { message: 'Invalid domain format (e.g., school.example.com)' }
+  ),
+});
+type ManageTenantFormValues = z.infer<typeof manageTenantFormSchema>;
 const fetchTenants = async (): Promise<EnrichedInstitution[]> => api<EnrichedInstitution[]>('/api/super-admin/tenants', { headers: { 'X-Mock-Role': 'super-admin' } });
 const fetchAnalytics = async (): Promise<SuperAdminAnalytics> => api<SuperAdminAnalytics>('/api/super-admin/analytics', { headers: { 'X-Mock-Role': 'super-admin' } });
 const fetchPendingTenants = async (): Promise<PendingTenant[]> => api<PendingTenant[]>('/api/super-admin/pending-tenants', { headers: { 'X-Mock-Role': 'super-admin' } });
@@ -57,10 +64,19 @@ export default function SuperAdminDashboard() {
   const [isManageDialogOpen, setManageDialogOpen] = useState(false);
   const [selectedTenant, setSelectedTenant] = useState<EnrichedInstitution | null>(null);
   const [rejectNotes, setRejectNotes] = useState('');
-  const form = useForm<TenantFormValues>({
+  const createForm = useForm<TenantFormValues>({
     resolver: zodResolver(tenantFormSchema),
     defaultValues: { name: '', country: '', languages: [] },
   });
+  const manageForm = useForm<ManageTenantFormValues>({
+    resolver: zodResolver(manageTenantFormSchema),
+    defaultValues: { customDomain: '' },
+  });
+  useEffect(() => {
+    if (selectedTenant) {
+      manageForm.reset({ customDomain: selectedTenant.customDomain || '' });
+    }
+  }, [selectedTenant, manageForm]);
   const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useQuery({ queryKey: ['super-admin-tenants'], queryFn: fetchTenants });
   const { data: analytics, isLoading: isLoadingAnalytics, error: analyticsError } = useQuery({ queryKey: ['super-admin-analytics'], queryFn: fetchAnalytics });
   const { data: pendingTenants, isLoading: isLoadingPending, error: pendingError } = useQuery({ queryKey: ['super-admin-pending-tenants'], queryFn: fetchPendingTenants });
@@ -76,7 +92,7 @@ export default function SuperAdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ['super-admin-tenants'] });
       queryClient.invalidateQueries({ queryKey: ['super-admin-analytics'] });
       setCreateDialogOpen(false);
-      form.reset();
+      createForm.reset();
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to create tenant.'),
   });
@@ -112,6 +128,19 @@ export default function SuperAdminDashboard() {
     },
     onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to delete tenant.'),
   });
+  const setDomainMutation = useMutation({
+    mutationFn: (data: { tenantId: string; customDomain: string }) => api(`/api/super-admin/tenants/${data.tenantId}/set-slug`, {
+      method: 'POST',
+      headers: { 'X-Mock-Role': 'super-admin' },
+      body: JSON.stringify({ customDomain: data.customDomain }),
+    }),
+    onSuccess: () => {
+      toast.success('Custom domain updated successfully!');
+      queryClient.invalidateQueries({ queryKey: ['super-admin-tenants'] });
+      setManageDialogOpen(false);
+    },
+    onError: (err) => toast.error(err instanceof Error ? err.message : 'Failed to set domain.'),
+  });
   const approveQuoteMutation = useMutation({
     mutationFn: (quoteId: string) => api(`/api/super-admin/quotes/${quoteId}/approve`, { method: 'PUT', headers: { 'X-Mock-Role': 'super-admin' } }),
     onSuccess: () => {
@@ -137,6 +166,13 @@ export default function SuperAdminDashboard() {
   ] : [];
   const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
   const itemVariants = { hidden: { y: 20, opacity: 0 }, visible: { y: 0, opacity: 1 } };
+  const handleManageSubmit = (values: ManageTenantFormValues) => {
+    if (selectedTenant && values.customDomain !== selectedTenant.customDomain) {
+      setDomainMutation.mutate({ tenantId: selectedTenant.id, customDomain: values.customDomain || '' });
+    } else {
+      setManageDialogOpen(false);
+    }
+  };
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 md:py-10 lg:py-12">
@@ -170,7 +206,7 @@ export default function SuperAdminDashboard() {
                     <DialogTrigger asChild><Button variant="outline" size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Manually</Button></DialogTrigger>
                     <DialogContent className="sm:max-w-[425px]">
                       <DialogHeader><DialogTitle>Create New Tenant</DialogTitle><DialogDescription>Manually provision a new institution.</DialogDescription></DialogHeader>
-                      <Form {...form}><form onSubmit={form.handleSubmit((d) => createTenantMutation.mutate(d))} className="space-y-4"><FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Institution Name</FormLabel><FormControl><Input placeholder="e.g., Cloudflare University" {...field} /></FormControl><FormMessage /></FormItem>)} /><FormField control={form.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="e.g., USA" {...field} /></FormControl><FormMessage /></FormItem>)} /><FormField control={form.control} name="curriculum" render={({ field }) => (<FormItem><FormLabel>Curriculum</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a curriculum" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Senegal">Senegal</SelectItem><SelectItem value="Côte d'Ivoire">Côte d'Ivoire</SelectItem><SelectItem value="AEFE">AEFE</SelectItem><SelectItem value="US">US</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} /><FormField control={form.control} name="languages" render={() => (<FormItem><div className="mb-2"><FormLabel>Languages</FormLabel></div>{languages.map((item) => (<FormField key={item.id} control={form.control} name="languages" render={({ field }) => (<FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0"><FormControl><Checkbox checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), item.id]) : field.onChange(field.value?.filter((value) => value !== item.id)); }} /></FormControl><FormLabel className="font-normal">{item.label}</FormLabel></FormItem>)} />))}<FormMessage /></FormItem>)} /><Button type="submit" className="w-full" disabled={createTenantMutation.isPending}>{createTenantMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create Tenant</Button></form></Form>
+                      <Form {...createForm}><form onSubmit={createForm.handleSubmit((d) => createTenantMutation.mutate(d))} className="space-y-4"><FormField control={createForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Institution Name</FormLabel><FormControl><Input placeholder="e.g., Cloudflare University" {...field} /></FormControl><FormMessage /></FormItem>)} /><FormField control={createForm.control} name="country" render={({ field }) => (<FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="e.g., USA" {...field} /></FormControl><FormMessage /></FormItem>)} /><FormField control={createForm.control} name="curriculum" render={({ field }) => (<FormItem><FormLabel>Curriculum</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a curriculum" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Senegal">Senegal</SelectItem><SelectItem value="Côte d'Ivoire">Côte d'Ivoire</SelectItem><SelectItem value="AEFE">AEFE</SelectItem><SelectItem value="US">US</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} /><FormField control={createForm.control} name="languages" render={() => (<FormItem><div className="mb-2"><FormLabel>Languages</FormLabel></div>{languages.map((item) => (<FormField key={item.id} control={createForm.control} name="languages" render={({ field }) => (<FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0"><FormControl><Checkbox checked={field.value?.includes(item.id)} onCheckedChange={(checked) => { return checked ? field.onChange([...(field.value || []), item.id]) : field.onChange(field.value?.filter((value) => value !== item.id)); }} /></FormControl><FormLabel className="font-normal">{item.label}</FormLabel></FormItem>)} />))}<FormMessage /></FormItem>)} /><Button type="submit" className="w-full" disabled={createTenantMutation.isPending}>{createTenantMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Create Tenant</Button></form></Form>
                     </DialogContent>
                   </Dialog>
                 </CardHeader>
@@ -217,28 +253,46 @@ export default function SuperAdminDashboard() {
             </DialogHeader>
             <div className="py-4 space-y-6">
               <Card>
-                <CardHeader><CardTitle>Statistics</CardTitle></CardHeader>
-                <CardContent className="flex gap-4">
+                <CardHeader><CardTitle>Statistics & Identifiers</CardTitle></CardHeader>
+                <CardContent className="flex flex-wrap gap-4">
                   <Badge variant="outline"><Users className="mr-2 h-4 w-4" /> {selectedTenant?.usersCount} Users</Badge>
                   <Badge variant="outline"><Building className="mr-2 h-4 w-4" /> {selectedTenant?.coursesCount} Courses</Badge>
+                  <Badge variant="secondary">Slug: {selectedTenant?.slug}</Badge>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
-                <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <Button variant="outline" onClick={() => toast.info("Tenant switching is a mock feature.")}><LogIn className="mr-2 h-4 w-4" /> Switch to Tenant</Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild><Button variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Tenant</Button></AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the tenant and ALL associated data (users, courses, quizzes, etc.). This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => selectedTenant && deleteTenantMutation.mutate(selectedTenant.id)}>Delete Tenant</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </CardContent>
-              </Card>
+              <Form {...manageForm}>
+                <form onSubmit={manageForm.handleSubmit(handleManageSubmit)}>
+                  <Card>
+                    <CardHeader><CardTitle>Domain & Slug</CardTitle></CardHeader>
+                    <CardContent>
+                      <FormField control={manageForm.control} name="customDomain" render={({ field }) => (<FormItem><FormLabel>Custom Domain (Optional)</FormLabel><FormControl><Input placeholder="school.example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    </CardContent>
+                  </Card>
+                  <Card className="mt-6">
+                    <CardHeader><CardTitle>Actions</CardTitle></CardHeader>
+                    <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Button type="submit" disabled={setDomainMutation.isPending}>{setDomainMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save Changes</Button>
+                      <Button variant="outline" onClick={async () => {
+                        const { data } = await api<{ tenantId: string }>('/api/get-tenant');
+                        localStorage.setItem('tenantId', data);
+                        navigate('/app/dashboard', { replace: true });
+                        toast.success(`Switched to ${selectedTenant?.name}`);
+                        setManageDialogOpen(false);
+                      }}><LogIn className="mr-2 h-4 w-4" /> Switch to Tenant</Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild><Button variant="destructive" className="sm:col-span-2"><Trash2 className="mr-2 h-4 w-4" /> Delete Tenant</Button></AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the tenant and ALL associated data (users, courses, quizzes, etc.). This action cannot be undone.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={() => selectedTenant && deleteTenantMutation.mutate(selectedTenant.id)}>Delete Tenant</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </CardContent>
+                  </Card>
+                </form>
+              </Form>
             </div>
           </DialogContent>
         </Dialog>

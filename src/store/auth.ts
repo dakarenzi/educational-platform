@@ -100,20 +100,9 @@ export function AuthInitializer() {
   const initialize = useAuthStore(s => s.actions.initialize);
   const isInitialized = useAuthStore(s => s.isInitialized);
   useEffect(() => {
-    let mounted = true;
-    const runInitialize = async () => {
-      try {
-        if (!isInitialized && mounted) {
-          await initialize();
-        }
-      } catch (error) {
-        console.error("AuthInitializer initialize failed:", error);
-      }
-    };
-    runInitialize();
-    return () => {
-      mounted = false;
-    };
+    if (!isInitialized) {
+      initialize();
+    }
   }, [initialize, isInitialized]);
   return null;
 }
