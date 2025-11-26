@@ -11,7 +11,14 @@ export function RouteErrorBoundary() {
         let errorMessage = 'Unknown route error';
         let errorStack = '';
         if (isRouteErrorResponse(error)) {
-          errorMessage = `${error.status} ${error.statusText}${error.data ? ` - ${JSON.stringify(error.data, null, 2)}` : ''}`;
+          errorMessage = `${error.status} ${error.statusText}`;
+          if (error.data) {
+            try {
+              errorMessage += ` - ${JSON.stringify(error.data, null, 2)}`;
+            } catch {
+              errorMessage += ' - (Unserializable data)';
+            }
+          }
         } else if (error instanceof Error) {
           errorMessage = error.message;
           errorStack = error.stack || '';
